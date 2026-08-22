@@ -1,43 +1,52 @@
-import React, { useRef, useState, useEffect } from 'react';
-import Globe from 'react-globe.gl';
+import { useEffect } from 'react';
+import { useStore } from './store';
+import { GlobeView } from './components/GlobeView';
+import { TopBar } from './components/TopBar';
+import { ControlPanel } from './components/ControlPanel';
+import { ConjunctionList } from './components/ConjunctionList';
+import { EventDetail } from './components/EventDetail';
+import { ObjectInfoPanel } from './components/ObjectInfoPanel';
+import { LoadingOverlay } from './components/LoadingOverlay';
 
 function App() {
-  const globeEl = useRef();
-  const [satData, setSatData] = useState([]);
+  const { fetchData, timeWindowHours, distanceThresholdKm, filterFormations, dataSource, staleTleDays, autoRefreshInterval } = useStore();
 
   useEffect(() => {
-    // Boilerplate for satellite data
-    setSatData([...Array(50).keys()].map(() => ({
-      lat: (Math.random() - 0.5) * 180,
-      lng: (Math.random() - 0.5) * 360,
-      alt: Math.random() * 0.8 + 0.1,
-      radius: Math.random() * 2,
-      color: ['red', 'white', 'blue', 'green'][Math.round(Math.random() * 3)]
-    })));
+    fetchData();
+  }, [timeWindowHours, distanceThresholdKm, filterFormations, dataSource, staleTleDays, fetchData]);
+
+  useEffect(() => {
+    if (autoRefreshInterval > 0) {
+      const interval = setInterval(fetchData, autoRefreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefreshInterval, fetchData]);
+
+  // Global keydown handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        useStore.getState().setSelectedSatellite(null);
+        useStore.getState().setSelectedEvent(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   return (
-    <div className="dashboard-container">
-      <div className="glass-panel left-panel">
-        <h1>OrbVeil Dashboard</h1>
-        <p>Satellite Risk Assessment & Conjunction Feed</p>
-        <div className="feed">
-          <div className="feed-item">No active conjunctions.</div>
-        </div>
-      </div>
+    <div className="relative w-full h-screen overflow-hidden bg-[#05060a] text-white font-sans">
+      <LoadingOverlay />
       
-      <div className="globe-container">
-        <Globe
-          ref={globeEl}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-          objectsData={satData}
-          objectLabel="name"
-          objectColor="color"
-          objectAltitude="alt"
-          objectRadius="radius"
-          enablePointerInteraction={true}
-        />
-      </div>
+      {/* 3D Background */}
+      <GlobeView />
+
+      {/* UI Overlay */}
+      <TopBar />
+      <ControlPanel />
+      <ConjunctionList />
+      <EventDetail />
+      <ObjectInfoPanel />
     </div>
   );
 }
