@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import logging
 import httpx
+import math
 from datetime import datetime, timezone, timedelta
 
 from orbveil.core.tle import parse_tle
@@ -51,7 +52,10 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
     if cache[cache_key] and cache[fetch_key] and (now - cache[fetch_key]).total_seconds() < 3600:
         return cache[cache_key][:max_objects] if max_objects > 0 else cache[cache_key]
         
-    async with httpx.AsyncClient() as client:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    async with httpx.AsyncClient(headers=headers) as client:
         response = await client.get(url, timeout=60.0)
         response.raise_for_status()
         tles = parse_tle(response.text)
@@ -94,60 +98,7 @@ def is_maneuverable(name):
     if "STARLINK" in name or "ONEWEB" in name or "IRIDIUM" in name: return True
     return False
 
-@app.get("/")
-async def root():
-    return {"message": "ZeroGravity API is running", "status": "ok"}
-
-@app.get("/api/health")
-async def health():
-    now = datetime.now(timezone.utc)
-    return {
-        "status": "ok",
-        "timestamp": now.isoformat(),
-        "cache": {
-            "tles_active_count": len(cache["tles_active"]),
-            "tles_full_count": len(cache["tles_full"]),
-            "last_fetch_active": cache["last_fetch_active"].isoformat() if cache["last_fetch_active"] else None,
-            "last_fetch_full": cache["last_fetch_full"].isoformat() if cache["last_fetch_full"] else None,
-        }
-    }
-
-@app.get("/api/satellites")
-async def get_satellites(
-    max_objects: int = Query(1500, description="Max objects to return"),
-    data_source: str = Query("celestrak_active", description="Data source")
-):
-    tles = await fetch_tles_from_celestrak(data_source, max_objects)
-    return {"satellites": [_tle_to_dict(t) for t in tles]}
-
-@app.get("/api/conjunctions")
-async def get_conjunctions(
-    hours: float = Query(24.0, description="Screening window in hours"),
-    threshold_km: float = Query(10.0, description="Miss distance threshold in km"),
-    filter_formations: bool = Query(True, description="Filter known formations"),
-    stale_tle_days: float = Query(None, description="Max TLE age in days"),
-    data_source: str = Query("celestrak_active", description="Data source"),
-    max_objects: int = Query(1500, description="Max objects to screen")
-):
-    tles = await fetch_tles_from_celestrak(data_source, max_objects)
-    
-    now = datetime.now(timezone.utc)
-    params = (hours, threshold_km, filter_formations, stale_tle_days, data_source, max_objects)
-    
-    if (cache["conjunctions"] and cache["last_screen_time"] and 
-        cache["last_screen_params"] == params and 
-        (now - cache["last_screen_time"]).total_seconds() < 3600):
-        return {"conjunctions": cache["conjunctions"]}
-
-    events = screen_catalog(
-        tles=tles,
-        hours=hours,
-        step_minutes=10.0,
-        threshold_km=threshold_km,
-        max_tle_age_days=stale_tle_days,
-        reference_time=now
-    )
-    
+def _process_conjunctions(events, tles, now, filter_formations):
     tle_dict = {t.norad_id: t for t in tles}
     
     event_dicts = []
@@ -189,9 +140,6 @@ async def get_conjunctions(
         
         confidence = "REDUCED" if (prim_age > 3 or sec_age > 3) else "NORMAL"
         
-        # Approximate TCA lat/lon/alt by just returning empty strings for now.
-        # Frontend can compute it via satellite.js when it clicks 'Focus on Globe'.
-        
         results.append({
             "primary": {
                 "name": event["name1"],
@@ -227,6 +175,161 @@ async def get_conjunctions(
         })
         
     results.sort(key=lambda x: (-x["risk_score"], x["tca"]))
+    return results
+
+
+@app.get("/")
+async def root():
+    return {"message": "ZeroGravity API is running", "status": "ok"}
+
+
+@app.get("/api/health")
+async def health():
+    now = datetime.now(timezone.utc)
+    return {
+        "status": "ok",
+        "timestamp": now.isoformat(),
+        "cache": {
+            "tles_active_count": len(cache["tles_active"]),
+            "tles_full_count": len(cache["tles_full"]),
+            "last_fetch_active": cache["last_fetch_active"].isoformat() if cache["last_fetch_active"] else None,
+            "last_fetch_full": cache["last_fetch_full"].isoformat() if cache["last_fetch_full"] else None,
+        }
+    }
+
+
+@app.get("/api/stats")
+async def get_stats():
+    """Get aggregate statistics for the dashboard TopBar."""
+    now = datetime.now(timezone.utc)
+    if not cache["tles_active"]:
+        await fetch_tles_from_celestrak("celestrak_active", max_objects=1500)
+        
+    tles = cache["tles_active"]
+    active = 0
+    debris = 0
+    rocket = 0
+    for tle in tles:
+        name = tle.name.upper()
+        if " DEB" in name:
+            debris += 1
+        elif " R/B" in name or "ROCKET" in name:
+            rocket += 1
+        else:
+            active += 1
+
+    conjunctions = cache["conjunctions"]
+    critical = sum(1 for c in conjunctions if c["risk_category"] == "CRITICAL")
+    high = sum(1 for c in conjunctions if c["risk_category"] == "HIGH")
+    medium = sum(1 for c in conjunctions if c["risk_category"] == "MEDIUM")
+    low = sum(1 for c in conjunctions if c["risk_category"] == "LOW")
+    
+    avg_miss = sum(c["miss_distance_km"] for c in conjunctions) / len(conjunctions) if conjunctions else 0
+    closest = min(c["miss_distance_km"] for c in conjunctions) if conjunctions else 0
+    
+    return {
+        "total_tracked": len(tles),
+        "active_satellites": active,
+        "debris": debris,
+        "rocket_bodies": rocket,
+        "conjunctions_total": len(conjunctions),
+        "critical": critical,
+        "high": high,
+        "medium": medium,
+        "low": low,
+        "avg_miss_distance_km": round(avg_miss, 2),
+        "closest_approach_km": round(closest, 2),
+        "last_update": cache["last_screen_time"].isoformat() if cache["last_screen_time"] else None
+    }
+
+
+@app.get("/api/satellites")
+async def get_satellites(
+    max_objects: int = Query(1500, description="Max objects to return"),
+    data_source: str = Query("celestrak_active", description="Data source")
+):
+    tles = await fetch_tles_from_celestrak(data_source, max_objects)
+    return {"satellites": [_tle_to_dict(t) for t in tles]}
+
+
+@app.get("/api/orbits/{norad_id}")
+async def get_orbit_path(norad_id: int = Path(..., description="NORAD ID of the satellite")):
+    """Get the raw TLE for a specific satellite so the client can propagate its orbit path."""
+    tles = cache["tles_active"] or await fetch_tles_from_celestrak("celestrak_active")
+    
+    for tle in tles:
+        if tle.norad_id == norad_id:
+            return {
+                "norad_id": tle.norad_id,
+                "name": tle.name,
+                "line1": tle.line1,
+                "line2": tle.line2
+            }
+            
+    raise HTTPException(status_code=404, detail="Satellite not found in catalog")
+
+
+@app.post("/api/screen/{norad_id}")
+async def screen_satellite(
+    norad_id: int = Path(..., description="NORAD ID to screen"),
+    hours: float = Query(24.0, description="Screening window in hours"),
+    threshold_km: float = Query(10.0, description="Miss distance threshold in km"),
+    filter_formations: bool = Query(True, description="Filter known formations"),
+):
+    """On-demand screening for a specific satellite."""
+    tles = cache["tles_active"] or await fetch_tles_from_celestrak("celestrak_active")
+    
+    primary_tle = next((t for t in tles if t.norad_id == norad_id), None)
+    if not primary_tle:
+        raise HTTPException(status_code=404, detail="Target satellite not found in catalog")
+
+    now = datetime.now(timezone.utc)
+    
+    events = screen_catalog(
+        tles=tles,
+        hours=hours,
+        step_minutes=10.0,
+        threshold_km=threshold_km,
+        max_tle_age_days=None,
+        reference_time=now
+    )
+    
+    # Filter out events that don't involve the target satellite
+    target_events = [ev for ev in events if ev.primary_norad_id == norad_id or ev.secondary_norad_id == norad_id]
+    
+    results = _process_conjunctions(target_events, tles, now, filter_formations)
+    return {"conjunctions": results}
+
+
+@app.get("/api/conjunctions")
+async def get_conjunctions(
+    hours: float = Query(24.0, description="Screening window in hours"),
+    threshold_km: float = Query(10.0, description="Miss distance threshold in km"),
+    filter_formations: bool = Query(True, description="Filter known formations"),
+    stale_tle_days: float = Query(None, description="Max TLE age in days"),
+    data_source: str = Query("celestrak_active", description="Data source"),
+    max_objects: int = Query(1500, description="Max objects to screen")
+):
+    tles = await fetch_tles_from_celestrak(data_source, max_objects)
+    
+    now = datetime.now(timezone.utc)
+    params = (hours, threshold_km, filter_formations, stale_tle_days, data_source, max_objects)
+    
+    if (cache["conjunctions"] and cache["last_screen_time"] and 
+        cache["last_screen_params"] == params and 
+        (now - cache["last_screen_time"]).total_seconds() < 3600):
+        return {"conjunctions": cache["conjunctions"]}
+
+    events = screen_catalog(
+        tles=tles,
+        hours=hours,
+        step_minutes=10.0,
+        threshold_km=threshold_km,
+        max_tle_age_days=stale_tle_days,
+        reference_time=now
+    )
+    
+    results = _process_conjunctions(events, tles, now, filter_formations)
     
     cache["conjunctions"] = results
     cache["last_screen_params"] = params
