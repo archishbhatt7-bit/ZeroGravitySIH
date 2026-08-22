@@ -1,0 +1,83 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #050505;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.dashboard-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.globe-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.glass-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 350px;
+  height: calc(100vh - 40px);
+  background: rgba(20, 20, 25, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+p {
+  font-size: 0.9rem;
+  color: #a0a0b0;
+  margin-bottom: 24px;
+}
+
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.feed-item {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  border-left: 3px solid #4facfe;
+}
+
+.feed-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+  cursor: pointer;
+}

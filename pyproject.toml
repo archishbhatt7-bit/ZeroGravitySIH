@@ -31,7 +31,8 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["torch>=2.0"]
 batch = ["polars>=0.20"]
-all = ["orbveil[gpu,batch]"]
+api = ["fastapi", "uvicorn", "pydantic"]
+all = ["orbveil[gpu,batch,api]"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff", "mypy"]
 
 [project.urls]
