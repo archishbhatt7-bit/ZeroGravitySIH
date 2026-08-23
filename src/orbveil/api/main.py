@@ -6,10 +6,14 @@ import httpx
 import math
 from datetime import datetime, timezone, timedelta
 
+import numpy as np
+from sgp4.api import Satrec, jday
+
 from orbveil.core.tle import parse_tle
 from orbveil.core.screening import screen_catalog
 from orbveil.core.risk import classify_events
 from orbveil.core.formations import filter_formation_events
+from orbveil.core.probability import compute_pc, PcMethod
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +21,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="ZeroGravity API",
     description="API for satellite conjunction screening and visualization.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -53,17 +57,28 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
         return cache[cache_key][:max_objects] if max_objects > 0 else cache[cache_key]
         
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "ZeroGravity/0.2.0 (contact: info@zerogravity.local)"
     }
-    async with httpx.AsyncClient(headers=headers) as client:
-        response = await client.get(url, timeout=60.0)
-        response.raise_for_status()
-        tles = parse_tle(response.text)
+    
+    try:
+        async with httpx.AsyncClient(headers=headers) as client:
+            response = await client.get(url, timeout=10.0)
+            response.raise_for_status()
+            tles = parse_tle(response.text)
+    except Exception as e:
+        print(f"Failed to fetch from Celestrak: {e}. Using local fallback.")
+        import os
+        fallback_path = os.path.join(os.path.dirname(__file__), "fallback_tles.txt")
+        if os.path.exists(fallback_path):
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                tles = parse_tle(f.read())
+        else:
+            raise e
         
-        cache[cache_key] = tles
-        cache[fetch_key] = now
-        
-        return tles[:max_objects] if max_objects > 0 else tles
+    cache[cache_key] = tles
+    cache[fetch_key] = now
+    
+    return tles[:max_objects] if max_objects > 0 else tles
 
 def _tle_to_dict(tle):
     name = tle.name.upper()
@@ -97,6 +112,135 @@ def is_maneuverable(name):
     if " DEB" in name or " R/B" in name: return False
     if "STARLINK" in name or "ONEWEB" in name or "IRIDIUM" in name: return True
     return False
+
+
+# ─── Geodetic helpers ───────────────────────────────────────────────
+
+def _sgp4_at(satrec: Satrec, dt: datetime):
+    """Propagate a satrec to a datetime. Returns (pos_km, vel_km_s) or (None, None)."""
+    jd, fr = jday(dt.year, dt.month, dt.day, dt.hour, dt.minute,
+                  dt.second + dt.microsecond / 1e6)
+    err, pos, vel = satrec.sgp4(jd, fr)
+    if err != 0:
+        return None, None
+    return np.array(pos), np.array(vel)
+
+
+def _eci_to_geodetic(pos_km, dt: datetime):
+    """Convert ECI (TEME) position to geodetic lat/lng/alt.
+    
+    Uses a simplified TEME→ECEF rotation (ignoring nutation/precession for speed)
+    then converts ECEF to geodetic via iterative method.
+    """
+    # GMST angle
+    # Julian date
+    jd, fr = jday(dt.year, dt.month, dt.day, dt.hour, dt.minute,
+                  dt.second + dt.microsecond / 1e6)
+    jd_total = jd + fr
+    
+    # Greenwich Mean Sidereal Time (radians)
+    T = (jd_total - 2451545.0) / 36525.0
+    gmst = (67310.54841 + (876600 * 3600 + 8640184.812866) * T
+            + 0.093104 * T**2 - 6.2e-6 * T**3)
+    gmst = math.radians((gmst % 86400) / 240.0)
+    
+    # Rotate TEME → ECEF
+    cos_g = math.cos(gmst)
+    sin_g = math.sin(gmst)
+    x_ecef = pos_km[0] * cos_g + pos_km[1] * sin_g
+    y_ecef = -pos_km[0] * sin_g + pos_km[1] * cos_g
+    z_ecef = pos_km[2]
+    
+    # ECEF → Geodetic (WGS-84)
+    a = 6378.137  # equatorial radius km
+    f = 1 / 298.257223563
+    e2 = 2 * f - f * f
+    
+    lon = math.atan2(y_ecef, x_ecef)
+    p = math.sqrt(x_ecef**2 + y_ecef**2)
+    lat = math.atan2(z_ecef, p * (1 - e2))  # initial guess
+    
+    for _ in range(5):  # iterate
+        N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
+        lat = math.atan2(z_ecef + e2 * N * math.sin(lat), p)
+    
+    N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
+    alt = p / math.cos(lat) - N
+    
+    return math.degrees(lat), math.degrees(lon), alt
+
+
+def _compute_conjunction_location(prim_tle, sec_tle, tca: datetime):
+    """Compute the geographic location of a conjunction at TCA.
+    Returns (lat, lng, alt_km) using the primary object's position.
+    """
+    try:
+        prim_sat = Satrec.twoline2rv(prim_tle.line1, prim_tle.line2)
+        pos, _ = _sgp4_at(prim_sat, tca)
+        if pos is None:
+            return 0.0, 0.0, 400.0  # fallback
+        lat, lng, alt = _eci_to_geodetic(pos, tca)
+        return round(lat, 4), round(lng, 4), round(alt, 2)
+    except Exception:
+        return 0.0, 0.0, 400.0
+
+
+def _estimate_pc(prim_tle, sec_tle, tca: datetime, miss_distance_km: float):
+    """Estimate collision probability using Foster 1992 method.
+    
+    Since TLEs don't carry covariance, we use scaled identity matrices
+    where scale grows with TLE age (older = more uncertain).
+    """
+    try:
+        prim_sat = Satrec.twoline2rv(prim_tle.line1, prim_tle.line2)
+        sec_sat = Satrec.twoline2rv(sec_tle.line1, sec_tle.line2)
+        
+        pos1, vel1 = _sgp4_at(prim_sat, tca)
+        pos2, vel2 = _sgp4_at(sec_sat, tca)
+        
+        if pos1 is None or pos2 is None:
+            return None, None
+        
+        # Estimate position uncertainty from TLE age
+        now = datetime.now(timezone.utc)
+        prim_epoch = prim_tle.epoch.replace(tzinfo=timezone.utc) if prim_tle.epoch.tzinfo is None else prim_tle.epoch
+        sec_epoch = sec_tle.epoch.replace(tzinfo=timezone.utc) if sec_tle.epoch.tzinfo is None else sec_tle.epoch
+        
+        prim_age_days = abs((now - prim_epoch).total_seconds()) / 86400
+        sec_age_days = abs((now - sec_epoch).total_seconds()) / 86400
+        
+        # Position uncertainty grows ~1 km/day for SGP4/TLE
+        sigma1_km = max(0.1, 0.5 + prim_age_days * 1.0)
+        sigma2_km = max(0.1, 0.5 + sec_age_days * 1.0)
+        
+        # Build 6x6 covariance (position uncertainty only, velocity set small)
+        cov1 = np.zeros((6, 6))
+        cov1[0, 0] = cov1[1, 1] = cov1[2, 2] = sigma1_km ** 2
+        cov1[3, 3] = cov1[4, 4] = cov1[5, 5] = 0.001 ** 2  # velocity uncertainty
+        
+        cov2 = np.zeros((6, 6))
+        cov2[0, 0] = cov2[1, 1] = cov2[2, 2] = sigma2_km ** 2
+        cov2[3, 3] = cov2[4, 4] = cov2[5, 5] = 0.001 ** 2
+        
+        result = compute_pc(
+            pos1_km=pos1,
+            vel1_km_s=vel1,
+            pos2_km=pos2,
+            vel2_km_s=vel2,
+            cov1=cov1,
+            cov2=cov2,
+            hard_body_radius_m=20.0,
+            method=PcMethod.FOSTER_1992,
+        )
+        
+        return result.probability, "foster_1992_estimated"
+        
+    except Exception as e:
+        logger.warning("Pc estimation failed: %s", e)
+        return None, None
+
+
+# ─── Conjunction processing ─────────────────────────────────────────
 
 def _process_conjunctions(events, tles, now, filter_formations):
     tle_dict = {t.norad_id: t for t in tles}
@@ -140,6 +284,13 @@ def _process_conjunctions(events, tles, now, filter_formations):
         
         confidence = "REDUCED" if (prim_age > 3 or sec_age > 3) else "NORMAL"
         
+        # Compute geographic location at TCA
+        tca_dt = event["tca"]
+        lat, lng, alt = _compute_conjunction_location(prim_tle, sec_tle, tca_dt)
+        
+        # Estimate collision probability
+        pc, pc_method = _estimate_pc(prim_tle, sec_tle, tca_dt, event["miss_distance_km"])
+        
         results.append({
             "primary": {
                 "name": event["name1"],
@@ -171,12 +322,19 @@ def _process_conjunctions(events, tles, now, filter_formations):
             "time_to_tca_hours": assessment.time_to_tca_hours,
             "factors": assessment.factors,
             "recommendation": assessment.recommendation,
-            "confidence": confidence
+            "confidence": confidence,
+            "lat": lat,
+            "lng": lng,
+            "alt": alt,
+            "collision_probability": pc,
+            "probability_method": pc_method,
         })
         
     results.sort(key=lambda x: (-x["risk_score"], x["tca"]))
     return results
 
+
+# ─── Routes ─────────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
@@ -250,6 +408,55 @@ async def get_satellites(
 ):
     tles = await fetch_tles_from_celestrak(data_source, max_objects)
     return {"satellites": [_tle_to_dict(t) for t in tles]}
+
+
+@app.get("/api/satellites/search")
+async def search_satellites(
+    q: str = Query(..., min_length=1, description="Search query (name or NORAD ID)"),
+    limit: int = Query(20, ge=1, le=100, description="Max results"),
+):
+    """Search for satellites by name (substring) or NORAD ID (exact)."""
+    tles = cache["tles_active"]
+    if not tles:
+        tles = await fetch_tles_from_celestrak("celestrak_active", max_objects=1500)
+
+    q_upper = q.strip().upper()
+    results = []
+
+    # If query is numeric, try exact NORAD ID match first
+    is_numeric = q.strip().isdigit()
+    target_norad = int(q.strip()) if is_numeric else None
+
+    for tle in tles:
+        if len(results) >= limit:
+            break
+
+        matched = False
+        if target_norad is not None and tle.norad_id == target_norad:
+            matched = True
+        elif q_upper in tle.name.upper():
+            matched = True
+
+        if matched:
+            sat_dict = _tle_to_dict(tle)
+            # Compute current position
+            try:
+                sat = Satrec.twoline2rv(tle.line1, tle.line2)
+                now = datetime.now(timezone.utc)
+                pos, vel = _sgp4_at(sat, now)
+                if pos is not None:
+                    lat, lng, alt = _eci_to_geodetic(pos, now)
+                    sat_dict["lat"] = round(lat, 4)
+                    sat_dict["lng"] = round(lng, 4)
+                    sat_dict["alt"] = round(alt, 2)
+                    if vel is not None:
+                        sat_dict["velocity_km_s"] = round(float(np.linalg.norm(vel)), 3)
+            except Exception:
+                pass
+
+            results.append(sat_dict)
+
+    return {"results": results, "count": len(results)}
 
 
 @app.get("/api/orbits/{norad_id}")

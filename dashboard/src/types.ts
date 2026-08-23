@@ -9,6 +9,13 @@ export interface Satellite {
   line2: string;
 }
 
+export interface SearchResult extends Satellite {
+  lat?: number;
+  lng?: number;
+  alt?: number;
+  velocity_km_s?: number;
+}
+
 export interface RiskFactors {
   distance_score: number;
   velocity_score: number;
@@ -18,25 +25,21 @@ export interface RiskFactors {
   base_score: number;
 }
 
+export interface ConjunctionObject {
+  name: string;
+  norad_id: number;
+  rcs: string;
+  maneuverable: boolean;
+  object_type: string;
+  epoch: string;
+  age_days: number;
+  line1: string;
+  line2: string;
+}
+
 export interface ConjunctionEvent {
-  primary: {
-    name: string;
-    norad_id: number;
-    rcs: string;
-    maneuverable: boolean;
-    object_type: string;
-    epoch: string;
-    age_days: number;
-  };
-  secondary: {
-    name: string;
-    norad_id: number;
-    rcs: string;
-    maneuverable: boolean;
-    object_type: string;
-    epoch: string;
-    age_days: number;
-  };
+  primary: ConjunctionObject;
+  secondary: ConjunctionObject;
   tca: string;
   miss_distance_km: number;
   relative_velocity_km_s: number;
@@ -46,6 +49,11 @@ export interface ConjunctionEvent {
   factors: RiskFactors;
   recommendation: string;
   confidence: 'NORMAL' | 'REDUCED';
+  lat: number;
+  lng: number;
+  alt: number;
+  collision_probability: number | null;
+  probability_method: string | null;
 }
 
 export interface LayerVisibility {
@@ -55,4 +63,12 @@ export interface LayerVisibility {
   unknown: boolean;
   orbitPaths: boolean;
   conjunctionHighlights: boolean;
+  mapStyle?: 'day' | 'night';
+  autoRotate?: boolean;
+}
+
+export interface FocusTarget {
+  lat: number;
+  lng: number;
+  alt: number;
 }

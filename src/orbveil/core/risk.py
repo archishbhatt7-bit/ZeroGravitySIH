@@ -28,6 +28,7 @@ def assess_risk(
     obj2_maneuverable: bool = False,
     tca: datetime | None = None,
     now: datetime | None = None,
+    **kwargs,
 ) -> RiskAssessment:
     """
     Assess collision risk for a satellite conjunction event.
