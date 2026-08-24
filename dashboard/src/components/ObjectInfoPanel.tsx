@@ -1,14 +1,24 @@
-import { useStore } from '../store';
-import { X, Satellite, Activity } from 'lucide-react';
-import { format } from 'date-fns';
-import { useEffect, useState } from 'react';
-import * as satellite from 'satellite.js';
+import { useStore } from "../store";
+import { X, Satellite, Activity } from "lucide-react";
+import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import * as satellite from "satellite.js";
 
 export function ObjectInfoPanel() {
-  const { satellites, selectedSatelliteId, setSelectedSatellite, conjunctions } = useStore();
-  const [position, setPosition] = useState<{ lat: number; lng: number; alt: number; vel: number } | null>(null);
+  const {
+    satellites,
+    selectedSatelliteId,
+    setSelectedSatellite,
+    conjunctions,
+  } = useStore();
+  const [position, setPosition] = useState<{
+    lat: number;
+    lng: number;
+    alt: number;
+    vel: number;
+  } | null>(null);
 
-  const sat = satellites.find(s => s.norad_id === selectedSatelliteId);
+  const sat = satellites.find((s) => s.norad_id === selectedSatelliteId);
 
   useEffect(() => {
     if (!sat) return;
@@ -20,21 +30,21 @@ export function ObjectInfoPanel() {
         const date = new Date();
         const posVel = satellite.propagate(satrec, date);
         const gmst = satellite.gstime(date);
-        
-        if (posVel.position && typeof posVel.position !== 'boolean') {
+
+        if (posVel.position && typeof posVel.position !== "boolean") {
           const geodetic = satellite.eciToGeodetic(posVel.position, gmst);
-          
+
           let velocity = 0;
-          if (posVel.velocity && typeof posVel.velocity !== 'boolean') {
-            const v = posVel.velocity as { x: number, y: number, z: number };
+          if (posVel.velocity && typeof posVel.velocity !== "boolean") {
+            const v = posVel.velocity as { x: number; y: number; z: number };
             velocity = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
           }
-          
+
           setPosition({
             lat: satellite.degreesLat(geodetic.latitude),
             lng: satellite.degreesLong(geodetic.longitude),
             alt: geodetic.height,
-            vel: velocity
+            vel: velocity,
           });
         }
       } catch (e) {
@@ -49,16 +59,20 @@ export function ObjectInfoPanel() {
 
   if (!sat) return null;
 
-  const ageDays = (new Date().getTime() - new Date(sat.epoch).getTime()) / (1000 * 60 * 60 * 24);
+  const ageDays =
+    (new Date().getTime() - new Date(sat.epoch).getTime()) /
+    (1000 * 60 * 60 * 24);
   const isStale = ageDays > 3;
 
-  const activeConjunctions = conjunctions.filter(c => 
-    c.primary.norad_id === sat.norad_id || c.secondary.norad_id === sat.norad_id
+  const activeConjunctions = conjunctions.filter(
+    (c) =>
+      c.primary.norad_id === sat.norad_id ||
+      c.secondary.norad_id === sat.norad_id,
   );
 
   return (
     <div className="absolute top-24 left-6 glass-panel w-80 p-5 shadow-2xl z-30">
-      <button 
+      <button
         onClick={() => setSelectedSatellite(null)}
         className="absolute top-4 right-4 text-slate-400 hover:text-white"
       >
@@ -68,8 +82,15 @@ export function ObjectInfoPanel() {
       <div className="flex items-center gap-3 mb-4">
         <Satellite className="w-6 h-6 text-cyan-400" />
         <div>
-          <h2 className="text-lg font-bold text-slate-100 truncate w-48" title={sat.name}>{sat.name}</h2>
-          <p className="text-xs font-mono text-slate-400">NORAD: {sat.norad_id}</p>
+          <h2
+            className="text-lg font-bold text-slate-100 truncate w-48"
+            title={sat.name}
+          >
+            {sat.name}
+          </h2>
+          <p className="text-xs font-mono text-slate-400">
+            NORAD: {sat.norad_id}
+          </p>
         </div>
       </div>
 
@@ -78,11 +99,15 @@ export function ObjectInfoPanel() {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <span className="text-slate-500 block mb-0.5">TYPE</span>
-              <span className="text-slate-200">{sat.object_type.replace('_', ' ')}</span>
+              <span className="text-slate-200">
+                {sat.object_type.replace("_", " ")}
+              </span>
             </div>
             <div>
               <span className="text-slate-500 block mb-0.5">INCLINATION</span>
-              <span className="font-mono text-cyan-400">{sat.inclination.toFixed(2)}°</span>
+              <span className="font-mono text-cyan-400">
+                {sat.inclination.toFixed(2)}°
+              </span>
             </div>
           </div>
         </div>
@@ -100,7 +125,7 @@ export function ObjectInfoPanel() {
             )}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">
-            Epoch: {format(new Date(sat.epoch), 'yyyy-MM-dd HH:mm')}
+            Epoch: {format(new Date(sat.epoch), "yyyy-MM-dd HH:mm")}
           </div>
         </div>
 
@@ -112,19 +137,27 @@ export function ObjectInfoPanel() {
             <div className="grid grid-cols-2 gap-y-2 text-xs font-mono">
               <div>
                 <span className="text-slate-500 block">LAT</span>
-                <span className="text-slate-200">{position.lat.toFixed(4)}°</span>
+                <span className="text-slate-200">
+                  {position.lat.toFixed(4)}°
+                </span>
               </div>
               <div>
                 <span className="text-slate-500 block">LON</span>
-                <span className="text-slate-200">{position.lng.toFixed(4)}°</span>
+                <span className="text-slate-200">
+                  {position.lng.toFixed(4)}°
+                </span>
               </div>
               <div>
                 <span className="text-slate-500 block">ALT</span>
-                <span className="text-cyan-400">{position.alt.toFixed(1)} km</span>
+                <span className="text-cyan-400">
+                  {position.alt.toFixed(1)} km
+                </span>
               </div>
               <div>
                 <span className="text-slate-500 block">VEL</span>
-                <span className="text-slate-200">{position.vel.toFixed(2)} km/s</span>
+                <span className="text-slate-200">
+                  {position.vel.toFixed(2)} km/s
+                </span>
               </div>
             </div>
           </div>
@@ -137,11 +170,19 @@ export function ObjectInfoPanel() {
             </div>
             <div className="max-h-24 overflow-y-auto space-y-1 pr-1">
               {activeConjunctions.map((c, i) => (
-                <div key={i} className="text-[10px] font-mono flex justify-between items-center bg-black/20 p-1.5 rounded">
+                <div
+                  key={i}
+                  className="text-[10px] font-mono flex justify-between items-center bg-black/20 p-1.5 rounded"
+                >
                   <span className="text-slate-300 truncate w-24">
-                    vs {c.primary.norad_id === sat.norad_id ? c.secondary.name : c.primary.name}
+                    vs{" "}
+                    {c.primary.norad_id === sat.norad_id
+                      ? c.secondary.name
+                      : c.primary.name}
                   </span>
-                  <span className="text-cyan-400">{c.miss_distance_km.toFixed(1)} km</span>
+                  <span className="text-cyan-400">
+                    {c.miss_distance_km.toFixed(1)} km
+                  </span>
                 </div>
               ))}
             </div>

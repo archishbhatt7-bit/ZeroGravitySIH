@@ -31,10 +31,12 @@ events = screen(sentinel, catalog, days=7, threshold_km=5.0, step_minutes=10.0)
 print(f"Found {len(events)} close approaches\n")
 
 for e in events[:20]:
-    print(f"  NORAD {e.secondary_norad_id:>6d} | "
-          f"{e.miss_distance_km:8.3f} km | "
-          f"{e.relative_velocity_km_s:6.2f} km/s | "
-          f"TCA {e.tca:%Y-%m-%d %H:%M}")
+    print(
+        f"  NORAD {e.secondary_norad_id:>6d} | "
+        f"{e.miss_distance_km:8.3f} km | "
+        f"{e.relative_velocity_km_s:6.2f} km/s | "
+        f"TCA {e.tca:%Y-%m-%d %H:%M}"
+    )
 ```
 
 ---
@@ -108,7 +110,11 @@ for cdm in cdms:
     print(f"  TCA:        {cdm.tca:%Y-%m-%d %H:%M:%S UTC}")
     print(f"  Miss:       {cdm.miss_distance_km:.3f} km")
     print(f"  Rel speed:  {cdm.relative_speed_km_s:.2f} km/s")
-    print(f"  Pc:         {cdm.collision_probability:.2e}" if cdm.collision_probability else "  Pc:         N/A")
+    print(
+        f"  Pc:         {cdm.collision_probability:.2e}"
+        if cdm.collision_probability
+        else "  Pc:         N/A"
+    )
     print(f"  Object 1:   {cdm.object1.name} (NORAD {cdm.object1.designator})")
     print(f"  Object 2:   {cdm.object2.name} (NORAD {cdm.object2.designator})")
     print(f"  Maneuverable: {cdm.object1.maneuverable} / {cdm.object2.maneuverable}")
@@ -190,7 +196,9 @@ event_dicts = [
 ]
 
 real_threats, formation_alerts = filter_formation_events(event_dicts, formations)
-print(f"Screening results: {len(real_threats)} real threats, {len(formation_alerts)} formation encounters filtered")
+print(
+    f"Screening results: {len(real_threats)} real threats, {len(formation_alerts)} formation encounters filtered"
+)
 ```
 
 ---
@@ -206,9 +214,7 @@ from zerogravity import parse_tle, screen
 from zerogravity.core.risk import assess_risk, classify_events
 
 # Screen ISS
-iss_text = requests.get(
-    "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE"
-).text
+iss_text = requests.get("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE").text
 catalog_text = requests.get(
     "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=TLE"
 ).text
@@ -224,15 +230,17 @@ for e in events[:10]:
     risk = assess_risk(
         miss_distance_km=e.miss_distance_km,
         relative_velocity_km_s=e.relative_velocity_km_s,
-        obj1_rcs="LARGE",           # ISS is large
-        obj1_maneuverable=True,     # ISS can maneuver
+        obj1_rcs="LARGE",  # ISS is large
+        obj1_maneuverable=True,  # ISS can maneuver
         tca=e.tca,
         now=now,
     )
 
     icon = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢", "NEGLIGIBLE": "⚪"}
     print(f"{icon[risk.category]} [{risk.category}] Score: {risk.score}")
-    print(f"   NORAD {e.secondary_norad_id} | {e.miss_distance_km:.3f} km | {e.relative_velocity_km_s:.1f} km/s")
+    print(
+        f"   NORAD {e.secondary_norad_id} | {e.miss_distance_km:.3f} km | {e.relative_velocity_km_s:.1f} km/s"
+    )
     if risk.time_to_tca_hours is not None:
         print(f"   TCA in {risk.time_to_tca_hours:.1f} hours")
     print(f"   → {risk.recommendation}")
@@ -247,6 +255,7 @@ assessments = classify_events(event_dicts)
 
 # Summary
 from collections import Counter
+
 counts = Counter(a.category for a in assessments)
 print("Summary:")
 for cat in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NEGLIGIBLE"]:

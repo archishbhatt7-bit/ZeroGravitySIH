@@ -1,4 +1,5 @@
 """Integration test: parse → propagate → screen end-to-end."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -6,9 +7,9 @@ from datetime import timedelta
 import numpy as np
 import pytest
 
-from zerogravity.core.tle import TLE, parse_tle
 from zerogravity.core.propagation import propagate
-from zerogravity.core.screening import screen, ConjunctionEvent
+from zerogravity.core.screening import ConjunctionEvent, screen
+from zerogravity.core.tle import TLE, parse_tle
 
 # Hardcoded real TLEs (no network calls)
 ISS_TLE_TEXT = """\

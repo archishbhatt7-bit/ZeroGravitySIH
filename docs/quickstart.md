@@ -20,7 +20,9 @@ from zerogravity import parse_tle, screen
 
 # Fetch current TLEs from CelesTrak
 iss_text = requests.get("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE").text
-catalog_text = requests.get("https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=TLE").text
+catalog_text = requests.get(
+    "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=TLE"
+).text
 
 # Parse TLEs
 iss = parse_tle(iss_text)[0]
@@ -40,11 +42,11 @@ for e in events[:10]:
 
 ```python
 event = events[0]
-event.primary_norad_id       # 25544 (ISS)
-event.secondary_norad_id     # NORAD ID of the other object
-event.tca                    # datetime — Time of Closest Approach (UTC)
-event.miss_distance_km       # predicted miss distance
-event.relative_velocity_km_s # closing speed at TCA
+event.primary_norad_id  # 25544 (ISS)
+event.secondary_norad_id  # NORAD ID of the other object
+event.tca  # datetime — Time of Closest Approach (UTC)
+event.miss_distance_km  # predicted miss distance
+event.relative_velocity_km_s  # closing speed at TCA
 ```
 
 **What the numbers mean:**

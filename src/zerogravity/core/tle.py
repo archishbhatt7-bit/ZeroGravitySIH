@@ -11,8 +11,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from sgp4.api import Satrec, WGS72
-from sgp4.earth_gravity import wgs72
+from sgp4.api import WGS72, Satrec
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +81,7 @@ class TLE:
         year = int(line1[18:20])
         year = year + 2000 if year < 57 else year + 1900
         day_of_year = float(line1[20:32])
-        epoch = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(
-            days=day_of_year - 1
-        )
+        epoch = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(days=day_of_year - 1)
 
         norad_id = int(line1[2:7].strip())
 

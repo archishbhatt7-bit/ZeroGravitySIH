@@ -1,5 +1,5 @@
-import { useStore } from '../store';
-import { Loader2 } from 'lucide-react';
+import { useStore } from "../store";
+import { Loader2 } from "lucide-react";
 
 export function LoadingOverlay() {
   const { loading } = useStore();

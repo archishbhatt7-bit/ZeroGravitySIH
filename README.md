@@ -46,6 +46,7 @@ Every major conjunction assessment tool is closed-source. When your satellite's 
 
 ## What It Does
 
+- **Web Dashboard & API** — Interactive 3D Earth visualization of satellite orbits and potential collision events using a React/Vite frontend and FastAPI backend.
 - **Full catalog screening** — 30,070 objects (active satellites, debris, rocket bodies, unknown objects) in ~15-20 seconds via KD-tree spatial indexing + batch SGP4
 - **Debris-on-payload screening** — identify threats from rocket bodies, defunct satellites, and tracked debris
 - **Collision probability** — Foster (1992) analytical method + Monte Carlo sampling
@@ -125,6 +126,30 @@ catalog = client.fetch_catalog()
 cdms = client.fetch_cdms(days=7)
 ```
 
+## Web Dashboard
+
+ZeroGravity includes a full-stack web dashboard that visualizes satellite orbits and pinpoints potential collision events in real-time.
+
+- **Backend:** FastAPI REST API wrapping the core screening and probability functions.
+- **Frontend:** React + Vite application featuring a glassmorphic UI and 3D globe visualization (`react-globe.gl`).
+
+### Launching the Dashboard
+
+You can launch both the frontend and backend simultaneously from the root directory:
+
+**Windows:**
+```cmd
+.\start.bat
+```
+
+**Mac/Linux:**
+```bash
+./start.sh
+```
+
+- API runs on `http://localhost:8000`
+- Dashboard runs on `http://localhost:5173`
+
 ## How It Works
 
 ### Screening Pipeline
@@ -203,6 +228,7 @@ You need a TLE catalog file. Options:
 1. **Space-Track.org** (recommended) — free account, full catalog via API
    ```python
    from zerogravity import SpaceTrackClient
+
    client = SpaceTrackClient(identity="you@email.com", password="pw")
    catalog = client.fetch_catalog()
    ```

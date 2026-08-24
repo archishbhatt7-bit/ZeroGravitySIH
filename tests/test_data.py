@@ -7,9 +7,8 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from zerogravity.data.cdm import CDM, CDMObject
+from zerogravity.data.cdm import CDM
 from zerogravity.data.spacetrack import SpaceTrackClient
-
 
 # Realistic CDM test fixture in KVN format (CCSDS 508.0-B-1)
 SAMPLE_CDM_KVN = """CCSDS_CDM_VERS               = 1.0
@@ -246,28 +245,28 @@ SAMPLE_CDM_XML = """<?xml version="1.0" encoding="UTF-8"?>
 def test_cdm_kvn_parsing():
     """Test CDM KVN parsing with realistic fixture."""
     cdm = CDM.from_kvn(SAMPLE_CDM_KVN)
-    
+
     # Check header fields
     assert cdm.ccsds_cdm_vers == "1.0"
     assert cdm.originator == "JSPOC"
     assert cdm.message_id == "25544_conj_48274_20240214_120000"
-    
+
     # Check datetime parsing
     assert cdm.creation_date == datetime(2024, 2, 14, 12, 0, 0, tzinfo=timezone.utc)
     assert cdm.tca == datetime(2024, 2, 15, 8, 30, 15, 555000, tzinfo=timezone.utc)
-    
+
     # Check screening metrics
     assert cdm.miss_distance_km == 0.523
     assert cdm.relative_speed_km_s == 14.234
     assert cdm.collision_probability == pytest.approx(1.23e-05)
-    
+
     # Check object 1 (ISS)
     assert cdm.object1.designator == "25544"
     assert cdm.object1.name == "ISS (ZARYA)"
     assert cdm.object1.international_designator == "1998-067A"
     assert cdm.object1.maneuverable == "YES"
     assert cdm.object1.covariance_method == "CALCULATED"
-    
+
     # Check object 1 state vector
     assert cdm.object1.x_km == pytest.approx(2345.678)
     assert cdm.object1.y_km == pytest.approx(4567.890)
@@ -275,13 +274,13 @@ def test_cdm_kvn_parsing():
     assert cdm.object1.x_dot_km_s == pytest.approx(5.123)
     assert cdm.object1.y_dot_km_s == pytest.approx(4.567)
     assert cdm.object1.z_dot_km_s == pytest.approx(2.345)
-    
+
     # Check object 2 (debris)
     assert cdm.object2.designator == "48274"
     assert cdm.object2.name == "COSMOS 2251 DEB"
     assert cdm.object2.international_designator == "1993-036JKL"
     assert cdm.object2.maneuverable == "NO"
-    
+
     # Check object 2 state vector
     assert cdm.object2.x_km == pytest.approx(2345.156)
     assert cdm.object2.y_km == pytest.approx(4567.412)
@@ -294,61 +293,61 @@ def test_cdm_kvn_parsing():
 def test_cdm_covariance_matrix():
     """Test covariance matrix construction and symmetry."""
     cdm = CDM.from_kvn(SAMPLE_CDM_KVN)
-    
+
     # Check that covariance matrices exist
     assert cdm.object1.covariance is not None
     assert cdm.object2.covariance is not None
-    
+
     # Check shape
     assert cdm.object1.covariance.shape == (6, 6)
     assert cdm.object2.covariance.shape == (6, 6)
-    
+
     # Check symmetry
     cov1 = cdm.object1.covariance
     assert np.allclose(cov1, cov1.T), "Object 1 covariance must be symmetric"
-    
+
     cov2 = cdm.object2.covariance
     assert np.allclose(cov2, cov2.T), "Object 2 covariance must be symmetric"
-    
+
     # Check specific values (diagonal and a few off-diagonal)
     # Object 1
     assert cov1[0, 0] == pytest.approx(44.0)  # CR_R
-    assert cov1[1, 1] == pytest.approx(2.4)   # CT_T
-    assert cov1[2, 2] == pytest.approx(7.2)   # CN_N
+    assert cov1[1, 1] == pytest.approx(2.4)  # CT_T
+    assert cov1[2, 2] == pytest.approx(7.2)  # CN_N
     assert cov1[3, 3] == pytest.approx(0.000015)  # CRDOT_RDOT
-    assert cov1[1, 0] == pytest.approx(0.5)   # CT_R
-    assert cov1[0, 1] == pytest.approx(0.5)   # Symmetric
-    assert cov1[2, 1] == pytest.approx(0.1)   # CN_T
-    assert cov1[1, 2] == pytest.approx(0.1)   # Symmetric
-    
+    assert cov1[1, 0] == pytest.approx(0.5)  # CT_R
+    assert cov1[0, 1] == pytest.approx(0.5)  # Symmetric
+    assert cov1[2, 1] == pytest.approx(0.1)  # CN_T
+    assert cov1[1, 2] == pytest.approx(0.1)  # Symmetric
+
     # Object 2
     assert cov2[0, 0] == pytest.approx(120.5)  # CR_R
-    assert cov2[1, 1] == pytest.approx(8.9)    # CT_T
-    assert cov2[2, 2] == pytest.approx(15.3)   # CN_N
+    assert cov2[1, 1] == pytest.approx(8.9)  # CT_T
+    assert cov2[2, 2] == pytest.approx(15.3)  # CN_N
     assert cov2[5, 5] == pytest.approx(0.000052)  # CNDOT_NDOT
 
 
 def test_cdm_xml_parsing():
     """Test CDM XML parsing."""
     cdm = CDM.from_xml(SAMPLE_CDM_XML)
-    
+
     # Check header
     assert cdm.ccsds_cdm_vers == "1.0"
     assert cdm.originator == "JSPOC"
     assert cdm.message_id == "25544_conj_48274_20240214_120000"
     assert cdm.tca == datetime(2024, 2, 15, 8, 30, 15, 555000, tzinfo=timezone.utc)
-    
+
     # Check screening metrics
     assert cdm.miss_distance_km == pytest.approx(0.523)
     assert cdm.relative_speed_km_s == pytest.approx(14.234)
     assert cdm.collision_probability == pytest.approx(1.23e-05)
-    
+
     # Check objects
     assert cdm.object1.designator == "25544"
     assert cdm.object1.name == "ISS (ZARYA)"
     assert cdm.object2.designator == "48274"
     assert cdm.object2.name == "COSMOS 2251 DEB"
-    
+
     # Check covariance exists and is symmetric
     assert cdm.object1.covariance is not None
     assert cdm.object1.covariance.shape == (6, 6)
@@ -393,7 +392,7 @@ X_DOT                        = -4.856
 Y_DOT                        = -3.987
 Z_DOT                        = -2.123
 """
-    
+
     cdm = CDM.from_kvn(cdm_text)
     assert cdm.collision_probability is None
 
@@ -437,7 +436,7 @@ X_DOT                        = -4.856
 Y_DOT                        = -3.987
 Z_DOT                        = -2.123
 """
-    
+
     cdm = CDM.from_kvn(cdm_text)
     assert cdm.object1.covariance is None
     assert cdm.object2.covariance is None
@@ -446,7 +445,7 @@ Z_DOT                        = -2.123
 def test_spacetrack_client_init():
     """Test SpaceTrackClient initialization."""
     client = SpaceTrackClient(identity="test@example.com", password="secret123")
-    
+
     assert client.identity == "test@example.com"
     assert client.password == "secret123"
     assert client._authenticated is False
@@ -456,13 +455,13 @@ def test_spacetrack_client_init():
 def test_cdm_kvn_field_extraction():
     """Test specific field extraction from CDM."""
     cdm = CDM.from_kvn(SAMPLE_CDM_KVN)
-    
+
     # Test all major field types
     assert isinstance(cdm.tca, datetime)
     assert isinstance(cdm.miss_distance_km, float)
     assert isinstance(cdm.object1.name, str)
     assert isinstance(cdm.object1.maneuverable, str)
-    
+
     # Test that names match expected values
     assert "ISS" in cdm.object1.name
     assert "COSMOS" in cdm.object2.name or "DEB" in cdm.object2.name
@@ -471,6 +470,7 @@ def test_cdm_kvn_field_extraction():
 # ---------------------------------------------------------------------------
 # CDM edge cases
 # ---------------------------------------------------------------------------
+
 
 def test_cdm_to_kvn_raises_not_implemented():
     """Test that CDM.to_kvn() raises NotImplementedError."""
@@ -536,7 +536,7 @@ def test_cdm_datetime_is_utc_aware():
 # SpaceTrack client mocked HTTP tests
 # ---------------------------------------------------------------------------
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 ISS_TLE_TEXT = (
     "1 25544U 98067A   24045.54896019  .00016717  00000-0  30093-3 0  9993\n"
@@ -551,9 +551,7 @@ def _make_response(status_code: int = 200, text: str = "") -> MagicMock:
     resp.text = text
     resp.raise_for_status = MagicMock()
     if status_code >= 400:
-        resp.raise_for_status.side_effect = __import__("requests").HTTPError(
-            response=resp
-        )
+        resp.raise_for_status.side_effect = __import__("requests").HTTPError(response=resp)
     return resp
 
 
@@ -578,12 +576,12 @@ def test_fetch_tle_not_found():
 def test_fetch_tle_auth_failure_reauth():
     """Test fetch_tle re-authenticates on 401 and retries."""
     client = SpaceTrackClient(identity="user", password="pass")
-    
+
     login_resp = _make_response(200, "OK")
     resp_401 = MagicMock()
     resp_401.status_code = 401
     resp_success = _make_response(200, ISS_TLE_TEXT)
-    
+
     with patch.object(client._session, "post", return_value=login_resp):
         with patch.object(client._session, "get", side_effect=[resp_401, resp_success]):
             tle = client.fetch_tle(25544)
@@ -641,6 +639,7 @@ def test_fetch_cdms_parse_error_skipped():
 def test_fetch_tle_rate_limit_429():
     """Test current behavior on 429 rate limit (raises HTTPError)."""
     import requests as req
+
     client = SpaceTrackClient(identity="user", password="pass")
     with patch.object(client._session, "post", return_value=_make_response(200, "OK")):
         with patch.object(client._session, "get", return_value=_make_response(429, "Rate limited")):

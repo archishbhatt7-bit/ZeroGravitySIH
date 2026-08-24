@@ -69,7 +69,7 @@ class CDM:
         """
         lines = text.strip().splitlines()
         data: dict[str, str] = {}
-        
+
         # Parse key-value pairs
         for line in lines:
             line = line.strip()
@@ -80,7 +80,7 @@ class CDM:
                 key = key.strip()
                 value = value.strip()
                 # Remove units in brackets
-                value = re.sub(r'\s*\[.*?\]\s*', '', value)
+                value = re.sub(r"\s*\[.*?\]\s*", "", value)
                 data[key] = value
 
         # Parse header fields
@@ -92,7 +92,7 @@ class CDM:
             tca = _parse_datetime(data["TCA"])
             miss_distance_km = float(data["MISS_DISTANCE"])
             relative_speed_km_s = float(data["RELATIVE_SPEED"])
-            
+
             # Collision probability is optional
             collision_probability = None
             if "COLLISION_PROBABILITY" in data:
@@ -109,7 +109,7 @@ class CDM:
         obj1_data: dict[str, str] = {}
         obj2_data: dict[str, str] = {}
         current_obj = None
-        
+
         for line in lines:
             line = line.strip()
             if not line:
@@ -119,13 +119,13 @@ class CDM:
                 if key.strip() == "OBJECT":
                     current_obj = value.strip()
                     continue
-            
+
             if "=" in line and current_obj:
                 key, _, value = line.partition("=")
                 key = key.strip()
                 value = value.strip()
-                value = re.sub(r'\s*\[.*?\]\s*', '', value)
-                
+                value = re.sub(r"\s*\[.*?\]\s*", "", value)
+
                 if current_obj == "OBJECT1":
                     obj1_data[key] = value
                 elif current_obj == "OBJECT2":
@@ -177,7 +177,7 @@ class CDM:
         else:
             ns = {}
             ns_prefix = ""
-        
+
         def find_text(elem, path: str, default: str | None = None) -> str:
             """Find element text, handling namespaces."""
             # Try with detected namespace
@@ -185,11 +185,11 @@ class CDM:
                 node = elem.find(path.replace("//", f"//{ns_prefix}"), ns)
             else:
                 node = elem.find(path)
-            
+
             # Fallback: try without namespace
             if node is None:
                 node = elem.find(path)
-            
+
             if node is None:
                 if default is not None:
                     return default
@@ -205,7 +205,7 @@ class CDM:
             tca = _parse_datetime(find_text(root, ".//TCA"))
             miss_distance_km = float(find_text(root, ".//MISS_DISTANCE"))
             relative_speed_km_s = float(find_text(root, ".//RELATIVE_SPEED"))
-            
+
             collision_probability = None
             prob_text = find_text(root, ".//COLLISION_PROBABILITY", "")
             if prob_text:
@@ -219,7 +219,7 @@ class CDM:
                 segments = root.findall(f".//{ns_prefix}segment", ns)
             else:
                 segments = root.findall(".//segment")
-            
+
             if not segments:
                 # Fallback: try without namespace
                 segments = root.findall(".//segment")
@@ -274,7 +274,7 @@ def _parse_cdm_object(data: dict[str, str]) -> CDMObject:
     ephemeris_name = data.get("EPHEMERIS_NAME", "")
     covariance_method = data.get("COVARIANCE_METHOD", "")
     maneuverable = data.get("MANEUVERABLE", "")
-    
+
     # Position and velocity
     x_km = float(data.get("X", 0))
     y_km = float(data.get("Y", 0))
@@ -282,10 +282,10 @@ def _parse_cdm_object(data: dict[str, str]) -> CDMObject:
     x_dot_km_s = float(data.get("X_DOT", 0))
     y_dot_km_s = float(data.get("Y_DOT", 0))
     z_dot_km_s = float(data.get("Z_DOT", 0))
-    
+
     # Parse covariance matrix (RTN frame, lower-triangular)
     covariance = _parse_covariance_kvn(data)
-    
+
     return CDMObject(
         designator=designator,
         name=name,
@@ -305,9 +305,9 @@ def _parse_cdm_object(data: dict[str, str]) -> CDMObject:
 
 def _parse_covariance_kvn(data: dict[str, str]) -> NDArray[np.float64] | None:
     """Build 6x6 symmetric covariance matrix from RTN lower-triangular elements.
-    
+
     The covariance is provided as:
-    CR_R, CT_R, CT_T, CN_R, CN_T, CN_N, 
+    CR_R, CT_R, CT_T, CN_R, CN_T, CN_N,
     CRDOT_R, CRDOT_T, CRDOT_N, CRDOT_RDOT,
     CTDOT_R, CTDOT_T, CTDOT_N, CTDOT_RDOT, CTDOT_TDOT,
     CNDOT_R, CNDOT_T, CNDOT_N, CNDOT_RDOT, CNDOT_TDOT, CNDOT_NDOT
@@ -315,20 +315,35 @@ def _parse_covariance_kvn(data: dict[str, str]) -> NDArray[np.float64] | None:
     # Check if any covariance data exists
     if "CR_R" not in data:
         return None
-    
+
     # Initialize 6x6 matrix
     cov = np.zeros((6, 6), dtype=np.float64)
-    
+
     # Lower-triangular elements (row, col, key)
     elements = [
         (0, 0, "CR_R"),
-        (1, 0, "CT_R"), (1, 1, "CT_T"),
-        (2, 0, "CN_R"), (2, 1, "CN_T"), (2, 2, "CN_N"),
-        (3, 0, "CRDOT_R"), (3, 1, "CRDOT_T"), (3, 2, "CRDOT_N"), (3, 3, "CRDOT_RDOT"),
-        (4, 0, "CTDOT_R"), (4, 1, "CTDOT_T"), (4, 2, "CTDOT_N"), (4, 3, "CTDOT_RDOT"), (4, 4, "CTDOT_TDOT"),
-        (5, 0, "CNDOT_R"), (5, 1, "CNDOT_T"), (5, 2, "CNDOT_N"), (5, 3, "CNDOT_RDOT"), (5, 4, "CNDOT_TDOT"), (5, 5, "CNDOT_NDOT"),
+        (1, 0, "CT_R"),
+        (1, 1, "CT_T"),
+        (2, 0, "CN_R"),
+        (2, 1, "CN_T"),
+        (2, 2, "CN_N"),
+        (3, 0, "CRDOT_R"),
+        (3, 1, "CRDOT_T"),
+        (3, 2, "CRDOT_N"),
+        (3, 3, "CRDOT_RDOT"),
+        (4, 0, "CTDOT_R"),
+        (4, 1, "CTDOT_T"),
+        (4, 2, "CTDOT_N"),
+        (4, 3, "CTDOT_RDOT"),
+        (4, 4, "CTDOT_TDOT"),
+        (5, 0, "CNDOT_R"),
+        (5, 1, "CNDOT_T"),
+        (5, 2, "CNDOT_N"),
+        (5, 3, "CNDOT_RDOT"),
+        (5, 4, "CNDOT_TDOT"),
+        (5, 5, "CNDOT_NDOT"),
     ]
-    
+
     for row, col, key in elements:
         if key in data:
             value = float(data[key])
@@ -336,12 +351,13 @@ def _parse_covariance_kvn(data: dict[str, str]) -> NDArray[np.float64] | None:
             # Mirror to upper triangle (symmetric matrix)
             if row != col:
                 cov[col, row] = value
-    
+
     return cov
 
 
 def _parse_cdm_object_xml(segment: ET.Element) -> CDMObject:
     """Parse a CDMObject from XML segment element."""
+
     def find_text(path: str, default: str = "") -> str:
         # Try to find with any namespace
         node = segment.find(path)
@@ -357,24 +373,24 @@ def _parse_cdm_object_xml(segment: ET.Element) -> CDMObject:
                     node = elem
                     break
         return node.text if node is not None and node.text else default
-    
+
     designator = find_text(".//OBJECT_DESIGNATOR")
     name = find_text(".//OBJECT_NAME")
     international_designator = find_text(".//INTERNATIONAL_DESIGNATOR")
     ephemeris_name = find_text(".//EPHEMERIS_NAME")
     covariance_method = find_text(".//COVARIANCE_METHOD")
     maneuverable = find_text(".//MANEUVERABLE")
-    
+
     x_km = float(find_text(".//X", "0"))
     y_km = float(find_text(".//Y", "0"))
     z_km = float(find_text(".//Z", "0"))
     x_dot_km_s = float(find_text(".//X_DOT", "0"))
     y_dot_km_s = float(find_text(".//Y_DOT", "0"))
     z_dot_km_s = float(find_text(".//Z_DOT", "0"))
-    
+
     # Parse covariance
     covariance = _parse_covariance_xml(segment)
-    
+
     return CDMObject(
         designator=designator,
         name=name,
@@ -394,6 +410,7 @@ def _parse_cdm_object_xml(segment: ET.Element) -> CDMObject:
 
 def _parse_covariance_xml(segment: ET.Element) -> NDArray[np.float64] | None:
     """Parse covariance matrix from XML segment."""
+
     def find_text(path: str) -> str | None:
         node = segment.find(path)
         if node is None:
@@ -406,22 +423,37 @@ def _parse_covariance_xml(segment: ET.Element) -> NDArray[np.float64] | None:
                     node = elem
                     break
         return node.text if node is not None else None
-    
+
     # Check if covariance exists
     if find_text(".//CR_R") is None:
         return None
-    
+
     cov = np.zeros((6, 6), dtype=np.float64)
-    
+
     elements = [
         (0, 0, "CR_R"),
-        (1, 0, "CT_R"), (1, 1, "CT_T"),
-        (2, 0, "CN_R"), (2, 1, "CN_T"), (2, 2, "CN_N"),
-        (3, 0, "CRDOT_R"), (3, 1, "CRDOT_T"), (3, 2, "CRDOT_N"), (3, 3, "CRDOT_RDOT"),
-        (4, 0, "CTDOT_R"), (4, 1, "CTDOT_T"), (4, 2, "CTDOT_N"), (4, 3, "CTDOT_RDOT"), (4, 4, "CTDOT_TDOT"),
-        (5, 0, "CNDOT_R"), (5, 1, "CNDOT_T"), (5, 2, "CNDOT_N"), (5, 3, "CNDOT_RDOT"), (5, 4, "CNDOT_TDOT"), (5, 5, "CNDOT_NDOT"),
+        (1, 0, "CT_R"),
+        (1, 1, "CT_T"),
+        (2, 0, "CN_R"),
+        (2, 1, "CN_T"),
+        (2, 2, "CN_N"),
+        (3, 0, "CRDOT_R"),
+        (3, 1, "CRDOT_T"),
+        (3, 2, "CRDOT_N"),
+        (3, 3, "CRDOT_RDOT"),
+        (4, 0, "CTDOT_R"),
+        (4, 1, "CTDOT_T"),
+        (4, 2, "CTDOT_N"),
+        (4, 3, "CTDOT_RDOT"),
+        (4, 4, "CTDOT_TDOT"),
+        (5, 0, "CNDOT_R"),
+        (5, 1, "CNDOT_T"),
+        (5, 2, "CNDOT_N"),
+        (5, 3, "CNDOT_RDOT"),
+        (5, 4, "CNDOT_TDOT"),
+        (5, 5, "CNDOT_NDOT"),
     ]
-    
+
     for row, col, key in elements:
         value_str = find_text(f".//{key}")
         if value_str:
@@ -429,5 +461,5 @@ def _parse_covariance_xml(segment: ET.Element) -> NDArray[np.float64] | None:
             cov[row, col] = value
             if row != col:
                 cov[col, row] = value
-    
+
     return cov

@@ -1,5 +1,11 @@
-import { create } from 'zustand';
-import type { Satellite, ConjunctionEvent, LayerVisibility, FocusTarget, SearchResult } from './types';
+import { create } from "zustand";
+import type {
+  Satellite,
+  ConjunctionEvent,
+  LayerVisibility,
+  FocusTarget,
+  SearchResult,
+} from "./types";
 
 interface DashboardState {
   satellites: Satellite[];
@@ -7,25 +13,25 @@ interface DashboardState {
   loading: boolean;
   error: string | null;
   lastRefresh: Date | null;
-  
+
   // Selection state
   selectedSatelliteId: number | null;
   selectedEventId: string | null;
-  
+
   // Focus target for globe camera animation
   focusTarget: FocusTarget | null;
-  
+
   // Search
   searchQuery: string;
   searchResults: SearchResult[];
   searchLoading: boolean;
-  
+
   // Orbit path for selected satellite
   orbitPath: { lat: number; lng: number; alt: number }[] | null;
-  
+
   // Analysis mode
   isAnalysisMode: boolean;
-  
+
   // Filter state
   timeWindowHours: number;
   distanceThresholdKm: number;
@@ -33,9 +39,9 @@ interface DashboardState {
   autoRefreshInterval: number; // 0 = off, otherwise ms
   dataSource: string;
   staleTleDays: number;
-  
+
   layerVisibility: LayerVisibility;
-  
+
   // Actions
   fetchData: () => Promise<void>;
   setSelectedSatellite: (id: number | null) => void;
@@ -52,10 +58,12 @@ interface DashboardState {
   searchSatellites: (query: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   clearSearch: () => void;
-  setOrbitPath: (path: { lat: number; lng: number; alt: number }[] | null) => void;
+  setOrbitPath: (
+    path: { lat: number; lng: number; alt: number }[] | null,
+  ) => void;
 }
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = "http://localhost:8000/api";
 
 export const useStore = create<DashboardState>((set, get) => ({
   satellites: [],
@@ -63,26 +71,26 @@ export const useStore = create<DashboardState>((set, get) => ({
   loading: false,
   error: null,
   lastRefresh: null,
-  
+
   selectedSatelliteId: null,
   selectedEventId: null,
   focusTarget: null,
-  
-  searchQuery: '',
+
+  searchQuery: "",
   searchResults: [],
   searchLoading: false,
-  
+
   orbitPath: null,
-  
+
   isAnalysisMode: false,
-  
+
   timeWindowHours: 24,
   distanceThresholdKm: 10,
   filterFormations: true,
   autoRefreshInterval: 0,
-  dataSource: 'celestrak_active',
+  dataSource: "celestrak_active",
   staleTleDays: 3,
-  
+
   layerVisibility: {
     activeSatellites: true,
     debris: true,
@@ -90,27 +98,32 @@ export const useStore = create<DashboardState>((set, get) => ({
     unknown: true,
     orbitPaths: true,
     conjunctionHighlights: true,
-    mapStyle: 'day' as 'day' | 'night',
+    mapStyle: "day" as "day" | "night",
     autoRotate: false,
   },
-  
+
   fetchData: async () => {
     set({ loading: true, error: null });
     try {
       const state = get();
-      
+
       const [satRes, conjRes] = await Promise.all([
-        fetch(`${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=1500`),
-        fetch(`${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`)
+        fetch(
+          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=1500`,
+        ),
+        fetch(
+          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
+        ),
       ]);
-      
-      if (!satRes.ok || !conjRes.ok) throw new Error("Failed to fetch data from ZeroGravity API");
-      
+
+      if (!satRes.ok || !conjRes.ok)
+        throw new Error("Failed to fetch data from ZeroGravity API");
+
       const satData = await satRes.json();
       const conjData = await conjRes.json();
-      
-      set({ 
-        satellites: satData.satellites, 
+
+      set({
+        satellites: satData.satellites,
         conjunctions: conjData.conjunctions,
         loading: false,
         lastRefresh: new Date(),
@@ -120,28 +133,33 @@ export const useStore = create<DashboardState>((set, get) => ({
       set({ error: err.message || "An error occurred", loading: false });
     }
   },
-  
-  setSelectedSatellite: (id) => set({ selectedSatelliteId: id, selectedEventId: null }),
-  setSelectedEvent: (id) => set({ selectedEventId: id, selectedSatelliteId: null }),
+
+  setSelectedSatellite: (id) =>
+    set({ selectedSatelliteId: id, selectedEventId: null }),
+  setSelectedEvent: (id) =>
+    set({ selectedEventId: id, selectedSatelliteId: null }),
   setFocusTarget: (target) => set({ focusTarget: target }),
-  setAnalysisMode: (mode) => set({ 
-    isAnalysisMode: mode, 
-    // Clear selections when exiting analysis mode
-    ...(!mode ? { selectedEventId: null, orbitPath: null } : {})
-  }),
+  setAnalysisMode: (mode) =>
+    set({
+      isAnalysisMode: mode,
+      // Clear selections when exiting analysis mode
+      ...(!mode ? { selectedEventId: null, orbitPath: null } : {}),
+    }),
   setTimeWindow: (hours) => set({ timeWindowHours: hours }),
   setDistanceThreshold: (km) => set({ distanceThresholdKm: km }),
   setFilterFormations: (filter) => set({ filterFormations: filter }),
   setAutoRefreshInterval: (ms) => set({ autoRefreshInterval: ms }),
   setDataSource: (source) => set({ dataSource: source }),
   setStaleTleDays: (days) => set({ staleTleDays: days }),
-  setLayerVisibility: (layer, visible) => set((state) => ({
-    layerVisibility: { ...state.layerVisibility, [layer]: visible }
-  })),
+  setLayerVisibility: (layer, visible) =>
+    set((state) => ({
+      layerVisibility: { ...state.layerVisibility, [layer]: visible },
+    })),
   setOrbitPath: (path) => set({ orbitPath: path }),
-  
+
   setSearchQuery: (query) => set({ searchQuery: query }),
-  clearSearch: () => set({ searchQuery: '', searchResults: [], searchLoading: false }),
+  clearSearch: () =>
+    set({ searchQuery: "", searchResults: [], searchLoading: false }),
 
   searchSatellites: async (query: string) => {
     if (!query.trim()) {
@@ -150,7 +168,9 @@ export const useStore = create<DashboardState>((set, get) => ({
     }
     set({ searchLoading: true });
     try {
-      const res = await fetch(`${API_BASE}/satellites/search?q=${encodeURIComponent(query)}&limit=20`);
+      const res = await fetch(
+        `${API_BASE}/satellites/search?q=${encodeURIComponent(query)}&limit=20`,
+      );
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
       set({ searchResults: data.results, searchLoading: false });

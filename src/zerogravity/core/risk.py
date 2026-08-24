@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RiskAssessment:
-    score: float          # 0-100
-    category: str         # CRITICAL/HIGH/MEDIUM/LOW/NEGLIGIBLE
+    score: float  # 0-100
+    category: str  # CRITICAL/HIGH/MEDIUM/LOW/NEGLIGIBLE
     miss_distance_km: float
     relative_velocity_km_s: float
     time_to_tca_hours: float | None
-    factors: dict         # breakdown of contributing factors
-    recommendation: str   # human-readable action recommendation
+    factors: dict  # breakdown of contributing factors
+    recommendation: str  # human-readable action recommendation
 
 
 def assess_risk(
@@ -32,7 +32,7 @@ def assess_risk(
 ) -> RiskAssessment:
     """
     Assess collision risk for a satellite conjunction event.
-    
+
     Args:
         miss_distance_km: Predicted miss distance in kilometers
         relative_velocity_km_s: Relative velocity in km/s
@@ -41,7 +41,7 @@ def assess_risk(
         obj1_maneuverable: Whether object 1 can perform avoidance maneuvers
         obj2_maneuverable: Whether object 2 can perform avoidance maneuvers
         tca: Time of closest approach (if None, time urgency not considered)
-    
+
     Returns:
         RiskAssessment with score, category, and recommendation
     """
@@ -52,7 +52,7 @@ def assess_risk(
     maneuver_multiplier = _calculate_maneuver_multiplier(obj1_maneuverable, obj2_maneuverable)
     time_to_tca_hours = None
     urgency_multiplier = 1.0
-    
+
     if tca is not None:
         if now is None:
             now = datetime.now(timezone.utc)
@@ -61,24 +61,24 @@ def assess_risk(
         time_delta = tca - now
         time_to_tca_hours = time_delta.total_seconds() / 3600
         urgency_multiplier = _calculate_urgency_multiplier(time_to_tca_hours)
-    
+
     # Combine factors: base score from distance and velocity, then apply multipliers
     base_score = (distance_score * 0.6) + (velocity_score * 0.4)
     adjusted_score = base_score * size_multiplier * maneuver_multiplier * urgency_multiplier
-    
+
     # Floor: extremely close approaches (< 0.5 km) are always CRITICAL regardless of maneuverability
     if miss_distance_km < 0.5 and relative_velocity_km_s > 0.1:
         adjusted_score = max(adjusted_score, 85.0)
-    
+
     # Clamp to 0-100
     final_score = max(0.0, min(100.0, adjusted_score))
-    
+
     # Categorize
     category = _categorize_score(final_score)
-    
+
     # Generate recommendation
     recommendation = _generate_recommendation(category, obj1_maneuverable, obj2_maneuverable)
-    
+
     # Build factor breakdown
     factors = {
         "distance_score": round(distance_score, 2),
@@ -88,8 +88,13 @@ def assess_risk(
         "urgency_multiplier": round(urgency_multiplier, 2),
         "base_score": round(base_score, 2),
     }
-    
-    logger.debug("Risk assessment: score=%.2f, category=%s, miss=%.3f km", final_score, category, miss_distance_km)
+
+    logger.debug(
+        "Risk assessment: score=%.2f, category=%s, miss=%.3f km",
+        final_score,
+        category,
+        miss_distance_km,
+    )
     return RiskAssessment(
         score=round(final_score, 2),
         category=category,
@@ -104,10 +109,10 @@ def assess_risk(
 def classify_events(events: list[dict]) -> list[RiskAssessment]:
     """
     Batch classify a list of conjunction events.
-    
+
     Args:
         events: List of event dictionaries with keys matching assess_risk parameters
-    
+
     Returns:
         List of RiskAssessment objects
     """
@@ -119,15 +124,14 @@ def _calculate_distance_score(miss_distance_km: float) -> float:
     Calculate risk score based on miss distance using exponential decay.
     <1 km = maximum risk, >25 km = negligible risk.
     """
-    if miss_distance_km < 0:
-        miss_distance_km = 0
-    
+    miss_distance_km = max(miss_distance_km, 0)
+
     # Exponential decay: score = 100 * e^(-k * distance)
     # At 1 km, we want high score (~90)
     # At 25 km, we want low score (~5)
     k = 0.15  # decay constant (increased for steeper drop-off)
     score = 100 * math.exp(-k * miss_distance_km)
-    
+
     return score
 
 
@@ -137,13 +141,12 @@ def _calculate_velocity_score(relative_velocity_km_s: float) -> float:
     Higher velocity = more kinetic energy = more dangerous collision.
     >10 km/s = maximum energy.
     """
-    if relative_velocity_km_s < 0:
-        relative_velocity_km_s = 0
-    
+    relative_velocity_km_s = max(relative_velocity_km_s, 0)
+
     # Normalize to 0-100, with 10 km/s as max
     max_velocity = 10.0
     score = min(100.0, (relative_velocity_km_s / max_velocity) * 100)
-    
+
     return score
 
 
@@ -158,10 +161,10 @@ def _calculate_size_multiplier(obj1_rcs: str, obj2_rcs: str) -> float:
         "LARGE": 1.3,
         "UNKNOWN": 1.0,
     }
-    
+
     weight1 = size_weights.get(obj1_rcs.upper(), 1.0)
     weight2 = size_weights.get(obj2_rcs.upper(), 1.0)
-    
+
     # Use the maximum weight (worst case)
     return max(weight1, weight2)
 
@@ -216,10 +219,12 @@ def _categorize_score(score: float) -> str:
         return "NEGLIGIBLE"
 
 
-def _generate_recommendation(category: str, obj1_maneuverable: bool, obj2_maneuverable: bool) -> str:
+def _generate_recommendation(
+    category: str, obj1_maneuverable: bool, obj2_maneuverable: bool
+) -> str:
     """Generate human-readable action recommendation."""
     can_maneuver = obj1_maneuverable or obj2_maneuverable
-    
+
     if category == "CRITICAL":
         if can_maneuver:
             return "IMMEDIATE ACTION REQUIRED: Execute collision avoidance maneuver now"

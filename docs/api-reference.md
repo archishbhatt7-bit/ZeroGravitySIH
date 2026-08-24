@@ -31,11 +31,11 @@ text = """ISS (ZARYA)
 
 tles = parse_tle(text)
 tle = tles[0]
-tle.name                     # "ISS (ZARYA)"
-tle.norad_id                 # 25544
-tle.epoch                    # datetime(2024, 1, 1, 12, 0, ..., tzinfo=UTC)
-tle.inclination_deg          # 51.64
-tle.eccentricity             # 0.0006703
+tle.name  # "ISS (ZARYA)"
+tle.norad_id  # 25544
+tle.epoch  # datetime(2024, 1, 1, 12, 0, ..., tzinfo=UTC)
+tle.inclination_deg  # 51.64
+tle.eccentricity  # 0.0006703
 tle.mean_motion_rev_per_day  # 15.4956...
 ```
 
@@ -88,12 +88,12 @@ from zerogravity import parse_tle, propagate
 
 tle = parse_tle(tle_text)[0]
 now = datetime.now(timezone.utc)
-times = [now + timedelta(minutes=i*10) for i in range(6)]
+times = [now + timedelta(minutes=i * 10) for i in range(6)]
 
 states = propagate(tle, times)
-states[0].position_km    # np.array([x, y, z]) in TEME frame, km
+states[0].position_km  # np.array([x, y, z]) in TEME frame, km
 states[0].velocity_km_s  # np.array([vx, vy, vz]) in TEME frame, km/s
-states[0].epoch           # datetime
+states[0].epoch  # datetime
 ```
 
 ### `propagate_batch(tles: list[TLE], time: datetime) -> tuple[NDArray, NDArray]`
@@ -256,10 +256,12 @@ Batch classify conjunction events. Each dict's keys match `assess_risk()` parame
 ```python
 from zerogravity.core.risk import classify_events
 
-assessments = classify_events([
-    {"miss_distance_km": 0.5, "relative_velocity_km_s": 10.0},
-    {"miss_distance_km": 8.0, "relative_velocity_km_s": 3.0},
-])
+assessments = classify_events(
+    [
+        {"miss_distance_km": 0.5, "relative_velocity_km_s": 10.0},
+        {"miss_distance_km": 8.0, "relative_velocity_km_s": 3.0},
+    ]
+)
 ```
 
 ### `RiskAssessment` — Dataclass

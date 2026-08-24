@@ -1,9 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
-import { useStore } from '../store';
-import { Search, X, Loader2, Satellite } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { useStore } from "../store";
+import { Search, X, Loader2, Satellite } from "lucide-react";
 
 export function SearchBar() {
-  const { searchQuery, searchResults, searchLoading, setSearchQuery, searchSatellites, clearSearch, setSelectedSatellite, setFocusTarget } = useStore();
+  const {
+    searchQuery,
+    searchResults,
+    searchLoading,
+    setSearchQuery,
+    searchSatellites,
+    clearSearch,
+    setSelectedSatellite,
+    setFocusTarget,
+  } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -22,22 +31,26 @@ export function SearchBar() {
   const handleSelect = (result: any) => {
     setSelectedSatellite(result.norad_id);
     if (result.lat !== undefined && result.lng !== undefined) {
-      setFocusTarget({ lat: result.lat, lng: result.lng, alt: result.alt || 400 });
+      setFocusTarget({
+        lat: result.lat,
+        lng: result.lng,
+        alt: result.alt || 400,
+      });
     }
     clearSearch();
     setIsOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlightIdx(prev => Math.min(prev + 1, searchResults.length - 1));
-    } else if (e.key === 'ArrowUp') {
+      setHighlightIdx((prev) => Math.min(prev + 1, searchResults.length - 1));
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightIdx(prev => Math.max(prev - 1, 0));
-    } else if (e.key === 'Enter' && highlightIdx >= 0) {
+      setHighlightIdx((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === "Enter" && highlightIdx >= 0) {
       handleSelect(searchResults[highlightIdx]);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       clearSearch();
       setIsOpen(false);
     }
@@ -46,20 +59,24 @@ export function SearchBar() {
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.search-container')) {
+      if (!(e.target as HTMLElement).closest(".search-container")) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'ACTIVE_SATELLITE': return 'text-cyan-400';
-      case 'DEBRIS': return 'text-slate-500';
-      case 'ROCKET_BODY': return 'text-yellow-500';
-      default: return 'text-slate-400';
+      case "ACTIVE_SATELLITE":
+        return "text-cyan-400";
+      case "DEBRIS":
+        return "text-slate-500";
+      case "ROCKET_BODY":
+        return "text-yellow-500";
+      default:
+        return "text-slate-400";
     }
   };
 
@@ -72,7 +89,7 @@ export function SearchBar() {
           ref={inputRef}
           type="text"
           value={searchQuery}
-          onChange={e => {
+          onChange={(e) => {
             handleInputChange(e.target.value);
             setIsOpen(true);
           }}
@@ -81,9 +98,17 @@ export function SearchBar() {
           placeholder="Search by name or NORAD ID..."
           className="bg-transparent border-none outline-none text-sm text-white placeholder-slate-500 w-full font-mono"
         />
-        {searchLoading && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />}
+        {searchLoading && (
+          <Loader2 className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />
+        )}
         {searchQuery && !searchLoading && (
-          <button onClick={() => { clearSearch(); setIsOpen(false); }} className="text-slate-500 hover:text-white transition-colors">
+          <button
+            onClick={() => {
+              clearSearch();
+              setIsOpen(false);
+            }}
+            className="text-slate-500 hover:text-white transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
@@ -98,17 +123,23 @@ export function SearchBar() {
               onClick={() => handleSelect(result)}
               className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-all border-b border-white/5 last:border-b-0 ${
                 i === highlightIdx
-                  ? 'bg-cyan-500/15 border-l-2 border-l-cyan-400'
-                  : 'hover:bg-white/5'
+                  ? "bg-cyan-500/15 border-l-2 border-l-cyan-400"
+                  : "hover:bg-white/5"
               }`}
             >
-              <Satellite className={`w-4 h-4 shrink-0 ${getTypeColor(result.object_type)}`} />
+              <Satellite
+                className={`w-4 h-4 shrink-0 ${getTypeColor(result.object_type)}`}
+              />
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-slate-200 truncate">{result.name}</div>
+                <div className="text-sm font-medium text-slate-200 truncate">
+                  {result.name}
+                </div>
                 <div className="flex gap-3 text-[10px] font-mono text-slate-500 mt-0.5">
                   <span>#{result.norad_id}</span>
-                  <span>{result.object_type.replace('_', ' ')}</span>
-                  {result.alt !== undefined && <span>{result.alt.toFixed(0)} km</span>}
+                  <span>{result.object_type.replace("_", " ")}</span>
+                  {result.alt !== undefined && (
+                    <span>{result.alt.toFixed(0)} km</span>
+                  )}
                 </div>
               </div>
             </button>
@@ -116,11 +147,14 @@ export function SearchBar() {
         </div>
       )}
 
-      {isOpen && searchQuery && !searchLoading && searchResults.length === 0 && (
-        <div className="glass-panel mt-1 rounded-lg px-4 py-6 text-center text-slate-500 text-sm slide-in-down">
-          No satellites found
-        </div>
-      )}
+      {isOpen &&
+        searchQuery &&
+        !searchLoading &&
+        searchResults.length === 0 && (
+          <div className="glass-panel mt-1 rounded-lg px-4 py-6 text-center text-slate-500 text-sm slide-in-down">
+            No satellites found
+          </div>
+        )}
     </div>
   );
 }

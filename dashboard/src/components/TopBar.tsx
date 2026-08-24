@@ -1,16 +1,22 @@
-import { RefreshCw, AlertTriangle, Activity, WifiOff } from 'lucide-react';
-import { useStore } from '../store';
-import { format } from 'date-fns';
+import { RefreshCw, AlertTriangle, Activity, WifiOff } from "lucide-react";
+import { useStore } from "../store";
+import { format } from "date-fns";
 
 export function TopBar() {
-  const { satellites, conjunctions, lastRefresh, fetchData, loading, error } = useStore();
+  const { satellites, conjunctions, lastRefresh, fetchData, loading, error } =
+    useStore();
 
-  const criticalCount = conjunctions.filter(c => c.risk_category === 'CRITICAL').length;
-  const highCount = conjunctions.filter(c => c.risk_category === 'HIGH').length;
+  const criticalCount = conjunctions.filter(
+    (c) => c.risk_category === "CRITICAL",
+  ).length;
+  const highCount = conjunctions.filter(
+    (c) => c.risk_category === "HIGH",
+  ).length;
 
-  const highestScore = conjunctions.length > 0 
-    ? Math.max(...conjunctions.map(c => c.risk_score)) 
-    : 0;
+  const highestScore =
+    conjunctions.length > 0
+      ? Math.max(...conjunctions.map((c) => c.risk_score))
+      : 0;
 
   return (
     <>
@@ -27,21 +33,34 @@ export function TopBar() {
 
         <div className="flex items-center gap-8">
           <div className="flex flex-col">
-            <span className="text-xs text-slate-400 uppercase">Tracked Objects</span>
-            <span className="text-lg font-mono tabular-nums">{satellites.length.toLocaleString()}</span>
-          </div>
-          
-          <div className="flex flex-col">
-            <span className="text-xs text-slate-400 uppercase">Active Alerts (Crit/High)</span>
-            <span className="text-lg font-mono flex items-center gap-2">
-              {criticalCount + highCount > 0 && <AlertTriangle className="w-4 h-4 text-red-500" />}
-              <span className="text-red-400">{criticalCount}</span> / <span className="text-orange-400">{highCount}</span>
+            <span className="text-xs text-slate-400 uppercase">
+              Tracked Objects
+            </span>
+            <span className="text-lg font-mono tabular-nums">
+              {satellites.length.toLocaleString()}
             </span>
           </div>
 
           <div className="flex flex-col">
-            <span className="text-xs text-slate-400 uppercase">Max Risk Score</span>
-            <span className={`text-lg font-mono tabular-nums ${highestScore > 80 ? 'text-red-500' : highestScore > 60 ? 'text-orange-500' : 'text-yellow-500'}`}>
+            <span className="text-xs text-slate-400 uppercase">
+              Active Alerts (Crit/High)
+            </span>
+            <span className="text-lg font-mono flex items-center gap-2">
+              {criticalCount + highCount > 0 && (
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+              )}
+              <span className="text-red-400">{criticalCount}</span> /{" "}
+              <span className="text-orange-400">{highCount}</span>
+            </span>
+          </div>
+
+          <div className="flex flex-col">
+            <span className="text-xs text-slate-400 uppercase">
+              Max Risk Score
+            </span>
+            <span
+              className={`text-lg font-mono tabular-nums ${highestScore > 80 ? "text-red-500" : highestScore > 60 ? "text-orange-500" : "text-yellow-500"}`}
+            >
               {highestScore.toFixed(1)}
             </span>
           </div>
@@ -51,16 +70,16 @@ export function TopBar() {
           <div className="text-right flex flex-col">
             <span className="text-xs text-slate-400">Last Refresh</span>
             <span className="text-sm font-mono text-slate-200 tabular-nums">
-              {lastRefresh ? format(lastRefresh, 'HH:mm:ss') : '--:--:--'}
+              {lastRefresh ? format(lastRefresh, "HH:mm:ss") : "--:--:--"}
             </span>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => fetchData()}
             disabled={loading}
             className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-all border border-cyan-500/30 disabled:opacity-50 hover-lift"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
@@ -71,7 +90,9 @@ export function TopBar() {
           <div className="flex items-center gap-3">
             <WifiOff className="w-5 h-5 text-red-400" />
             <div>
-              <div className="text-sm font-semibold text-red-300">Connection Error</div>
+              <div className="text-sm font-semibold text-red-300">
+                Connection Error
+              </div>
               <div className="text-xs text-red-400/80">{error}</div>
             </div>
           </div>
@@ -80,7 +101,7 @@ export function TopBar() {
             disabled={loading}
             className="px-4 py-1.5 bg-red-500/20 text-red-300 border border-red-500/40 rounded-lg text-xs font-semibold hover:bg-red-500/30 transition-all disabled:opacity-50"
           >
-            {loading ? 'Retrying...' : 'Retry'}
+            {loading ? "Retrying..." : "Retry"}
           </button>
         </div>
       )}

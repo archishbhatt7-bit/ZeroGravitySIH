@@ -1,18 +1,21 @@
 """Conjunction screening — identify close approaches between space objects."""
+
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-import math
+
 import numpy as np
 from numpy.typing import NDArray
-from sgp4.api import Satrec, SatrecArray, jday
 from scipy.spatial import cKDTree
+from sgp4.api import Satrec, SatrecArray, jday
 
-from zerogravity.core.tle import TLE
 from zerogravity.core.propagation import propagate_batch
-from zerogravity.utils.constants import EARTH_MU_KM3_S2 as MU, EARTH_RADIUS_KM as RE
+from zerogravity.core.tle import TLE
+from zerogravity.utils.constants import EARTH_MU_KM3_S2 as MU
+from zerogravity.utils.constants import EARTH_RADIUS_KM as RE
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,7 @@ def _apogee_perigee(tle: TLE) -> tuple[float, float]:
         Tuple of (perigee_altitude_km, apogee_altitude_km).
     """
     n_rad_per_sec = tle.mean_motion_rev_per_day * 2 * math.pi / 86400.0
-    a = (MU / (n_rad_per_sec ** 2)) ** (1.0 / 3.0)
+    a = (MU / (n_rad_per_sec**2)) ** (1.0 / 3.0)
     perigee_radius = a * (1 - tle.eccentricity)
     apogee_radius = a * (1 + tle.eccentricity)
     return perigee_radius - RE, apogee_radius - RE
@@ -73,17 +76,20 @@ def _prefilter(tles: list[TLE], primary: TLE, threshold_km: float) -> list[TLE]:
         if tle.norad_id == primary.norad_id:
             continue
         secondary_perigee, secondary_apogee = _apogee_perigee(tle)
-        if (primary_perigee - threshold_km <= secondary_apogee and
-                primary_apogee + threshold_km >= secondary_perigee):
+        if (
+            primary_perigee - threshold_km <= secondary_apogee
+            and primary_apogee + threshold_km >= secondary_perigee
+        ):
             filtered.append(tle)
 
     return filtered
 
 
-def _sgp4_single(satrec: Satrec, t: datetime) -> tuple[NDArray[np.float64], NDArray[np.float64], bool]:
+def _sgp4_single(
+    satrec: Satrec, t: datetime
+) -> tuple[NDArray[np.float64], NDArray[np.float64], bool]:
     """Propagate a single satrec to a datetime. Returns (pos, vel, valid)."""
-    jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute,
-                  t.second + t.microsecond / 1e6)
+    jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
     error_code, pos, vel = satrec.sgp4(jd, fr)
     if error_code != 0:
         return np.zeros(3), np.zeros(3), False
@@ -178,9 +184,11 @@ def screen(
                 if min_dist <= threshold_km:
                     duplicate = False
                     for existing in all_events:
-                        if (existing.primary_norad_id == prim.norad_id and
-                                existing.secondary_norad_id == sec_norad_id and
-                                abs((existing.tca - tca).total_seconds()) < 300):
+                        if (
+                            existing.primary_norad_id == prim.norad_id
+                            and existing.secondary_norad_id == sec_norad_id
+                            and abs((existing.tca - tca).total_seconds()) < 300
+                        ):
                             if min_dist < existing.miss_distance_km:
                                 existing.tca = tca
                                 existing.miss_distance_km = min_dist
@@ -228,7 +236,7 @@ def _refine_tca(
     min_step = 1.0
 
     best_time = t_start
-    best_dist = float('inf')
+    best_dist = float("inf")
     best_rel_vel = 0.0
 
     prim_sat = primary.satrec
@@ -285,7 +293,9 @@ def filter_stale_tles(
         if age <= cutoff:
             fresh.append(tle)
 
-    logger.debug("filter_stale_tles: %d/%d TLEs within %.1f days", len(fresh), len(tles), max_age_days)
+    logger.debug(
+        "filter_stale_tles: %d/%d TLEs within %.1f days", len(fresh), len(tles), max_age_days
+    )
     return fresh
 
 
@@ -324,8 +334,13 @@ def screen_catalog(
         logger.info("screen_catalog: fewer than 2 TLEs, nothing to screen")
         return []
 
-    logger.info("screen_catalog: %d objects, %.0fh window, %.0fmin step, %.1fkm threshold",
-                len(tles), hours, step_minutes, threshold_km)
+    logger.info(
+        "screen_catalog: %d objects, %.0fh window, %.0fmin step, %.1fkm threshold",
+        len(tles),
+        hours,
+        step_minutes,
+        threshold_km,
+    )
 
     # Build SatrecArray for vectorized propagation
     satrecs = [t.satrec for t in tles]
@@ -335,8 +350,11 @@ def screen_catalog(
     # Time grid
     steps = int(hours * 60 / step_minutes) + 1
     base_jd, base_fr = jday(
-        reference_time.year, reference_time.month, reference_time.day,
-        reference_time.hour, reference_time.minute,
+        reference_time.year,
+        reference_time.month,
+        reference_time.day,
+        reference_time.hour,
+        reference_time.minute,
         reference_time.second + reference_time.microsecond / 1e6,
     )
     jd = np.full(steps, base_jd)

@@ -1,6 +1,6 @@
 """ZeroGravity Quickstart — parse a TLE and inspect orbital elements."""
 
-from zerogravity import TLE, parse_tle
+from zerogravity import parse_tle
 
 # ISS (ZARYA) TLE
 tle_text = """

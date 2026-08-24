@@ -44,11 +44,11 @@ export interface ConjunctionEvent {
   miss_distance_km: number;
   relative_velocity_km_s: number;
   risk_score: number;
-  risk_category: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'NEGLIGIBLE';
+  risk_category: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "NEGLIGIBLE";
   time_to_tca_hours: number | null;
   factors: RiskFactors;
   recommendation: string;
-  confidence: 'NORMAL' | 'REDUCED';
+  confidence: "NORMAL" | "REDUCED";
   lat: number;
   lng: number;
   alt: number;
@@ -63,7 +63,7 @@ export interface LayerVisibility {
   unknown: boolean;
   orbitPaths: boolean;
   conjunctionHighlights: boolean;
-  mapStyle?: 'day' | 'night';
+  mapStyle?: "day" | "night";
   autoRotate?: boolean;
 }
 
