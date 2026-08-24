@@ -11,3 +11,10 @@ IMPLEMENTATION_SUMMARY.md
 PUSH-REPORT.md
 README-draft.md
 VALIDATION.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/

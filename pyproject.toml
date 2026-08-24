@@ -7,14 +7,12 @@ name = "zerogravity"
 version = "0.1.0-dev"
 description = "Collision avoidance for satellite operators. Screen conjunctions, estimate collision probability, and protect your constellation."
 readme = "README.md"
-license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Autmori", email = "hello@autmori.com" }]
 keywords = ["space", "satellites", "conjunction", "collision-avoidance", "ssa", "sgp4"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

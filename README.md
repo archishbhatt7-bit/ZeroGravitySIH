@@ -5,7 +5,6 @@
 Screen the full public catalog for close approaches, compute collision probability, parse CDMs. Built for engineers who need transparency in safety-critical decisions.
 
 [![PyPI](https://img.shields.io/pypi/v/zerogravity?color=blue)](https://pypi.org/project/zerogravity/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/ncdrone/zerogravity/actions/workflows/tests.yml/badge.svg)](https://github.com/ncdrone/zerogravity/actions)
 
@@ -33,7 +32,7 @@ Every major conjunction assessment tool is closed-source. When your satellite's 
 | | ZeroGravity | Orekit | poliastro | AGI STK | CARA (18 SDS) |
 |---|---|---|---|---|---|
 | **Language** | Python | Java | Python (archived) | C++/.NET | Internal |
-| **Open source** | ✅ Apache 2.0 | ✅ Apache 2.0 | ✅ (archived) | ❌ Commercial | ❌ Gov only |
+| **Open source** | ✅ | ✅ Apache 2.0 | ✅ (archived) | ❌ Commercial | ❌ Gov only |
 | **Conjunction screening** | ✅ Full catalog | ✅ | ❌ | ✅ | ✅ |
 | **Collision probability** | ✅ Foster + MC | ✅ Multiple | ❌ | ✅ | ✅ |
 | **CDM parsing** | ✅ KVN + XML | ✅ | ❌ | ✅ | N/A |
@@ -260,10 +259,6 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest tests/ -v
 ```
-
-## License
-
-Apache 2.0 — use it, modify it, build on it. See [LICENSE](LICENSE).
 
 ## References
 
