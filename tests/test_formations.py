@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from orbveil.core.formations import (
+from zerogravity.core.formations import (
     FormationGroup,
     detect_formations,
     is_formation_pair,

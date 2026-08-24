@@ -1,4 +1,4 @@
-# OrbVeil Design System & UI/UX Specification
+# ZeroGravity Design System & UI/UX Specification
 
 To stun the judges and create a truly premium experience, we need to abandon basic dashboard templates and embrace a highly modern, immersive design language. The goal is to make the user feel like they are operating a next-generation space command center.
 

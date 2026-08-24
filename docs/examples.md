@@ -10,7 +10,7 @@ Screen a specific satellite (e.g., Sentinel-2A) against all active objects.
 
 ```python
 import requests
-from orbveil import parse_tle, screen
+from zerogravity import parse_tle, screen
 
 # Fetch TLEs
 sentinel_text = requests.get(
@@ -46,7 +46,7 @@ Run all-on-all screening for a Starlink shell using `screen_catalog()`.
 ```python
 import requests
 from datetime import datetime, timezone
-from orbveil import parse_tle, screen_catalog
+from zerogravity import parse_tle, screen_catalog
 
 # Fetch Starlink TLEs
 starlink_text = requests.get(
@@ -91,7 +91,7 @@ for e in critical:
 Parse CDMs from Space-Track and extract key metrics.
 
 ```python
-from orbveil import CDM, SpaceTrackClient
+from zerogravity import CDM, SpaceTrackClient
 import numpy as np
 
 # Option A: Parse a CDM file directly
@@ -139,9 +139,9 @@ Filter out formation encounters from conjunction screening results.
 
 ```python
 import requests
-from orbveil import parse_tle, screen_catalog
-from orbveil.core.formations import detect_formations, filter_formation_events
-from orbveil.core.propagation import propagate_batch
+from zerogravity import parse_tle, screen_catalog
+from zerogravity.core.formations import detect_formations, filter_formation_events
+from zerogravity.core.propagation import propagate_batch
 from datetime import datetime, timezone
 
 # Fetch a mixed catalog (stations, active sats)
@@ -202,8 +202,8 @@ Combine screening results with risk assessment for actionable alerts.
 ```python
 import requests
 from datetime import datetime, timezone
-from orbveil import parse_tle, screen
-from orbveil.core.risk import assess_risk, classify_events
+from zerogravity import parse_tle, screen
+from zerogravity.core.risk import assess_risk, classify_events
 
 # Screen ISS
 iss_text = requests.get(

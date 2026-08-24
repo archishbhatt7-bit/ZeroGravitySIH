@@ -6,9 +6,9 @@ import math
 import numpy as np
 import pytest
 
-from orbveil.core.tle import TLE
-from orbveil.core.propagation import propagate, propagate_batch, StateVector
-from orbveil.core.screening import (
+from zerogravity.core.tle import TLE
+from zerogravity.core.propagation import propagate, propagate_batch, StateVector
+from zerogravity.core.screening import (
     _apogee_perigee, _prefilter, screen, screen_catalog,
     filter_stale_tles, ConjunctionEvent,
 )

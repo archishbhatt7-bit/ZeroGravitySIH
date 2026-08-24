@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from orbveil.core.risk import RiskAssessment, assess_risk, classify_events
+from zerogravity.core.risk import RiskAssessment, assess_risk, classify_events
 
 
 class TestRiskAssessment:

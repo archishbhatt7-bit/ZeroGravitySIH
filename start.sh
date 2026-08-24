@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Starting ZeroGravity Backend..."
 cd "$SCRIPT_DIR"
-PYTHONPATH=src python -m uvicorn orbveil.api.main:app --reload --host 0.0.0.0 --port 8000 &
+PYTHONPATH=src python -m uvicorn zerogravity.api.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 echo "Starting ZeroGravity Frontend..."

@@ -1,22 +1,22 @@
-# 🛰️ OrbVeil
+# 🛰️ ZeroGravity
 
 **Open-source satellite conjunction screening for Python.**
 
 Screen the full public catalog for close approaches, compute collision probability, parse CDMs. Built for engineers who need transparency in safety-critical decisions.
 
-[![PyPI](https://img.shields.io/pypi/v/orbveil?color=blue)](https://pypi.org/project/orbveil/)
+[![PyPI](https://img.shields.io/pypi/v/zerogravity?color=blue)](https://pypi.org/project/zerogravity/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/ncdrone/orbveil/actions/workflows/tests.yml/badge.svg)](https://github.com/ncdrone/orbveil/actions)
+[![Tests](https://github.com/ncdrone/zerogravity/actions/workflows/tests.yml/badge.svg)](https://github.com/ncdrone/zerogravity/actions)
 
 ```bash
-pip install orbveil
+pip install zerogravity
 ```
 
 ## Screen ISS in 5 Lines
 
 ```python
-from orbveil import parse_tle, screen
+from zerogravity import parse_tle, screen
 
 catalog = parse_tle(open("catalog.tle").read())
 iss = next(s for s in catalog if s.satnum == 25544)
@@ -26,11 +26,11 @@ for e in events:
     print(f"NORAD {e.secondary_norad_id}: {e.miss_distance_km:.2f} km at {e.tca}")
 ```
 
-## Why OrbVeil?
+## Why ZeroGravity?
 
 Every major conjunction assessment tool is closed-source. When your satellite's safety depends on a collision probability number, you should be able to read the code that computed it.
 
-| | OrbVeil | Orekit | poliastro | AGI STK | CARA (18 SDS) |
+| | ZeroGravity | Orekit | poliastro | AGI STK | CARA (18 SDS) |
 |---|---|---|---|---|---|
 | **Language** | Python | Java | Python (archived) | C++/.NET | Internal |
 | **Open source** | ✅ Apache 2.0 | ✅ Apache 2.0 | ✅ (archived) | ❌ Commercial | ❌ Gov only |
@@ -40,9 +40,9 @@ Every major conjunction assessment tool is closed-source. When your satellite's 
 | **Install** | `pip install` | Maven + config | `pip install` | Installer | N/A |
 | **Scope** | CA-focused | Full astrodynamics | General orbital mechanics | Everything | CA operations |
 
-**OrbVeil's niche:** Python-native, pip-installable, focused entirely on conjunction assessment. No JVM, no XML configuration, no license keys. Five lines to screen a satellite.
+**ZeroGravity's niche:** Python-native, pip-installable, focused entirely on conjunction assessment. No JVM, no XML configuration, no license keys. Five lines to screen a satellite.
 
-> **Note:** poliastro, the main Python orbital mechanics library, [was archived in 2024](https://github.com/poliastro/poliastro). OrbVeil fills the conjunction assessment gap in the Python space ecosystem.
+> **Note:** poliastro, the main Python orbital mechanics library, [was archived in 2024](https://github.com/poliastro/poliastro). ZeroGravity fills the conjunction assessment gap in the Python space ecosystem.
 
 ## What It Does
 
@@ -52,7 +52,7 @@ Every major conjunction assessment tool is closed-source. When your satellite's 
 - **CDM parsing** — CCSDS 508.0-B-1 standard (KVN + XML formats)
 - **Space-Track integration** — fetch TLEs, catalog, and CDMs directly
 - **Daily screening capable** — automated conjunction assessment for operational satellite safety
-- **Validated** — cross-validated daily against 340+ real CDMs from 18th Space Defense Squadron ([results](https://orbveil.com/validation))
+- **Validated** — cross-validated daily against 340+ real CDMs from 18th Space Defense Squadron ([results](https://zerogravity.com/validation))
 
 ## Benchmarks
 
@@ -81,14 +81,14 @@ Cross-validated daily against real Conjunction Data Messages from the 18th Space
 | Within 5 km of CDM | **84%** |
 | Within 10 km of CDM | **92%** |
 
-The sub-1 km median error reflects the difference between SGP4/TLE propagation and precision SP ephemerides used by 18th SDS. For screening (finding events to investigate), this is well within operational utility. Full validation methodology and live results at [orbveil.com/validation](https://orbveil.com/validation).
+The sub-1 km median error reflects the difference between SGP4/TLE propagation and precision SP ephemerides used by 18th SDS. For screening (finding events to investigate), this is well within operational utility. Full validation methodology and live results at [zerogravity.com/validation](https://zerogravity.com/validation).
 
 ## Usage
 
 ### Compute Collision Probability
 
 ```python
-from orbveil import compute_pc, PcMethod
+from zerogravity import compute_pc, PcMethod
 import numpy as np
 
 result = compute_pc(
@@ -107,7 +107,7 @@ print(f"Pc = {result.probability:.2e}")
 ### Parse CDMs
 
 ```python
-from orbveil import CDM
+from zerogravity import CDM
 
 cdm = CDM.from_kvn(open("conjunction.kvn").read())
 print(f"TCA: {cdm.tca}")
@@ -118,7 +118,7 @@ print(f"Pc: {cdm.collision_probability:.2e}")
 ### Fetch from Space-Track
 
 ```python
-from orbveil import SpaceTrackClient
+from zerogravity import SpaceTrackClient
 
 client = SpaceTrackClient(identity="you@email.com", password="password")
 catalog = client.fetch_catalog()
@@ -169,23 +169,23 @@ Full catalog (30,070 objects: active, debris, rocket bodies, unknown)
 
 | Module | Description |
 |---|---|
-| `orbveil.core.tle` | TLE parsing (wraps sgp4) |
-| `orbveil.core.propagation` | SGP4 propagation + batch via SatrecArray |
-| `orbveil.core.screening` | Conjunction screening with orbital shell prefilter + KD-tree |
-| `orbveil.core.probability` | Collision probability (Foster 1992 + Monte Carlo) |
-| `orbveil.data.cdm` | CDM parser (CCSDS 508.0-B-1, KVN + XML) |
-| `orbveil.data.spacetrack` | Space-Track.org API client |
+| `zerogravity.core.tle` | TLE parsing (wraps sgp4) |
+| `zerogravity.core.propagation` | SGP4 propagation + batch via SatrecArray |
+| `zerogravity.core.screening` | Conjunction screening with orbital shell prefilter + KD-tree |
+| `zerogravity.core.probability` | Collision probability (Foster 1992 + Monte Carlo) |
+| `zerogravity.data.cdm` | CDM parser (CCSDS 508.0-B-1, KVN + XML) |
+| `zerogravity.data.spacetrack` | Space-Track.org API client |
 
 ## Limitations
 
-Being honest about what OrbVeil is and isn't:
+Being honest about what ZeroGravity is and isn't:
 
 - **SGP4/TLE only** — no high-precision numerical propagation (SP). Position errors grow with propagation time (~1 km at epoch, worse at 7 days). This is inherent to TLE data, not a bug.
 - **No orbit determination** — we don't generate covariance from observations. Covariance comes from CDMs or user input.
 - **No maneuver planning** — we tell you about conjunctions, not how to avoid them.
 - **Single-threaded** — fast enough for single-satellite operations, not optimized for constellation-scale screening (6,000+ primaries).
 - **No atmospheric drag modeling beyond SGP4's built-in** — during geomagnetic storms, TLE accuracy degrades.
-- **Not a replacement for operational CA services** — 18th SDS and commercial providers use SP ephemerides with much higher fidelity. OrbVeil is for independent screening, research, education, and small teams.
+- **Not a replacement for operational CA services** — 18th SDS and commercial providers use SP ephemerides with much higher fidelity. ZeroGravity is for independent screening, research, education, and small teams.
 
 ## Roadmap
 
@@ -202,7 +202,7 @@ You need a TLE catalog file. Options:
 
 1. **Space-Track.org** (recommended) — free account, full catalog via API
    ```python
-   from orbveil import SpaceTrackClient
+   from zerogravity import SpaceTrackClient
    client = SpaceTrackClient(identity="you@email.com", password="pw")
    catalog = client.fetch_catalog()
    ```
@@ -212,7 +212,7 @@ You need a TLE catalog file. Options:
 
 ## Data Sources
 
-OrbVeil screens the complete public catalog from trusted sources:
+ZeroGravity screens the complete public catalog from trusted sources:
 
 - **TLE Data**: CelesTrak and Space-Track.org provide Two-Line Element sets maintained by the 18th Space Defense Squadron (formerly JSpOC)
 - **Full Catalog**: 30,070 tracked objects including:
@@ -228,8 +228,8 @@ This comprehensive approach ensures debris-on-payload screening — identifying 
 ## Development
 
 ```bash
-git clone https://github.com/ncdrone/orbveil.git
-cd orbveil
+git clone https://github.com/ncdrone/zerogravity.git
+cd zerogravity
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest tests/ -v

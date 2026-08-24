@@ -6,8 +6,8 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 
-from orbveil.core.tle import TLE
-from orbveil.core.propagation import propagate, propagate_batch
+from zerogravity.core.tle import TLE
+from zerogravity.core.propagation import propagate, propagate_batch
 
 
 ISS_LINE1 = "1 25544U 98067A   24045.54896019  .00016717  00000-0  30093-3 0  9993"

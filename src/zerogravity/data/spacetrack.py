@@ -13,8 +13,8 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-from orbveil.core.tle import TLE, parse_tle
-from orbveil.data.cdm import CDM
+from zerogravity.core.tle import TLE, parse_tle
+from zerogravity.data.cdm import CDM
 
 
 @dataclass

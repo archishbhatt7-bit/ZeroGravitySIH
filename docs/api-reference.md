@@ -1,14 +1,14 @@
 # API Reference
 
-All public symbols are importable from the top-level `orbveil` package:
+All public symbols are importable from the top-level `zerogravity` package:
 
 ```python
-from orbveil import parse_tle, screen, screen_catalog, compute_pc, CDM, SpaceTrackClient
+from zerogravity import parse_tle, screen, screen_catalog, compute_pc, CDM, SpaceTrackClient
 ```
 
 ---
 
-## `orbveil.core.tle` — TLE Parsing
+## `zerogravity.core.tle` — TLE Parsing
 
 ### `parse_tle(text: str) -> list[TLE]`
 
@@ -23,7 +23,7 @@ Parse one or more TLEs from raw text. Handles both 2-line and 3-line (with name)
 **Returns:** `list[TLE]`
 
 ```python
-from orbveil import parse_tle
+from zerogravity import parse_tle
 
 text = """ISS (ZARYA)
 1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9002
@@ -65,7 +65,7 @@ Frozen dataclass with fields:
 
 ---
 
-## `orbveil.core.propagation` — Orbit Propagation
+## `zerogravity.core.propagation` — Orbit Propagation
 
 ### `propagate(tle: TLE, times: list[datetime]) -> list[StateVector]`
 
@@ -84,7 +84,7 @@ Propagate a single TLE to multiple times using SGP4.
 
 ```python
 from datetime import datetime, timezone, timedelta
-from orbveil import parse_tle, propagate
+from zerogravity import parse_tle, propagate
 
 tle = parse_tle(tle_text)[0]
 now = datetime.now(timezone.utc)
@@ -113,7 +113,7 @@ Propagate many TLEs to a single time using vectorized C-level SGP4 (`SatrecArray
 
 ```python
 from datetime import datetime, timezone
-from orbveil import parse_tle, propagate_batch
+from zerogravity import parse_tle, propagate_batch
 
 catalog = parse_tle(catalog_text)
 now = datetime.now(timezone.utc)
@@ -133,7 +133,7 @@ print(f"ISS position: {states[0, :3]} km")
 
 ---
 
-## `orbveil.core.screening` — Conjunction Screening
+## `zerogravity.core.screening` — Conjunction Screening
 
 ### `screen(primary, catalog, days=7.0, threshold_km=10.0, step_minutes=10.0) -> list[ConjunctionEvent]`
 
@@ -154,7 +154,7 @@ Screen primary object(s) against a catalog for close approaches.
 **Returns:** `list[ConjunctionEvent]` sorted by miss distance (closest first).
 
 ```python
-from orbveil import parse_tle, screen
+from zerogravity import parse_tle, screen
 
 iss = parse_tle(iss_text)[0]
 catalog = parse_tle(catalog_text)
@@ -182,7 +182,7 @@ All-on-all screening using vectorized propagation + KD-tree spatial indexing. Re
 **Returns:** `list[ConjunctionEvent]` sorted by miss distance.
 
 ```python
-from orbveil import parse_tle, screen_catalog
+from zerogravity import parse_tle, screen_catalog
 
 catalog = parse_tle(catalog_text)
 events = screen_catalog(catalog, hours=48, threshold_km=5.0, max_tle_age_days=3)
@@ -214,7 +214,7 @@ Remove TLEs older than `max_age_days` from the reference time.
 
 ---
 
-## `orbveil.core.risk` — Risk Assessment
+## `zerogravity.core.risk` — Risk Assessment
 
 ### `assess_risk(miss_distance_km, relative_velocity_km_s, ...) -> RiskAssessment`
 
@@ -236,7 +236,7 @@ Score collision risk for a conjunction event on a 0–100 scale.
 **Returns:** `RiskAssessment`
 
 ```python
-from orbveil.core.risk import assess_risk
+from zerogravity.core.risk import assess_risk
 
 result = assess_risk(
     miss_distance_km=0.8,
@@ -254,7 +254,7 @@ print(result.recommendation)
 Batch classify conjunction events. Each dict's keys match `assess_risk()` parameters.
 
 ```python
-from orbveil.core.risk import classify_events
+from zerogravity.core.risk import classify_events
 
 assessments = classify_events([
     {"miss_distance_km": 0.5, "relative_velocity_km_s": 10.0},
@@ -278,7 +278,7 @@ assessments = classify_events([
 
 ---
 
-## `orbveil.core.formations` — Formation Detection
+## `zerogravity.core.formations` — Formation Detection
 
 ### `detect_formations(names, norad_ids, positions=None, velocities=None, cospar_ids=None) -> list[FormationGroup]`
 
@@ -297,7 +297,7 @@ Detect satellite formations from a list of objects. Uses name-based heuristics (
 **Returns:** `list[FormationGroup]`
 
 ```python
-from orbveil.core.formations import detect_formations
+from zerogravity.core.formations import detect_formations
 
 names = ["ISS (ZARYA)", "PROGRESS-MS 25", "SOYUZ-MS 26", "STARLINK-1234"]
 norad_ids = [25544, 58000, 58001, 55000]
@@ -338,7 +338,7 @@ Separate conjunction events into real threats vs. formation encounters.
 
 ---
 
-## `orbveil.core.probability` — Collision Probability
+## `zerogravity.core.probability` — Collision Probability
 
 ### `compute_pc(pos1_km, vel1_km_s, pos2_km, vel2_km_s, cov1, cov2, hard_body_radius_m=20.0, method=PcMethod.FOSTER_1992, mc_samples=100_000) -> PcResult`
 
@@ -362,7 +362,7 @@ Compute collision probability from state vectors and covariance matrices.
 
 ```python
 import numpy as np
-from orbveil import compute_pc, PcMethod
+from zerogravity import compute_pc, PcMethod
 
 result = compute_pc(
     pos1_km=np.array([6800.0, 0.0, 0.0]),
@@ -394,14 +394,14 @@ print(f"Mahalanobis distance = {result.mahalanobis_distance:.2f}")
 
 ---
 
-## `orbveil.data.cdm` — CDM Parsing
+## `zerogravity.data.cdm` — CDM Parsing
 
 ### `CDM.from_kvn(text: str) -> CDM`
 
 Parse a Conjunction Data Message from CCSDS KVN (Key-Value Notation) format.
 
 ```python
-from orbveil import CDM
+from zerogravity import CDM
 
 cdm = CDM.from_kvn(open("conjunction.cdm").read())
 print(f"TCA: {cdm.tca}")
@@ -445,7 +445,7 @@ Parse a CDM from XML format (CCSDS 508.0-B-1).
 
 ---
 
-## `orbveil.data.spacetrack` — Space-Track API
+## `zerogravity.data.spacetrack` — Space-Track API
 
 ### `SpaceTrackClient(identity: str, password: str)`
 
@@ -476,7 +476,7 @@ Fetch recent Conjunction Data Messages. Requires CDM access permissions on Space
 | `days` | `int` | `7` | Look-back days |
 
 ```python
-from orbveil import SpaceTrackClient
+from zerogravity import SpaceTrackClient
 
 client = SpaceTrackClient("you@email.com", "password")
 iss = client.fetch_tle(25544)
@@ -485,9 +485,9 @@ cdms = client.fetch_cdms(norad_id=25544, days=3)
 
 ---
 
-## `orbveil.utils.constants`
+## `zerogravity.utils.constants`
 
-Useful constants importable from `orbveil.utils.constants`:
+Useful constants importable from `zerogravity.utils.constants`:
 
 | Constant | Value | Description |
 |---|---|---|

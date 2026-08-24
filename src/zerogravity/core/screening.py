@@ -10,9 +10,9 @@ from numpy.typing import NDArray
 from sgp4.api import Satrec, SatrecArray, jday
 from scipy.spatial import cKDTree
 
-from orbveil.core.tle import TLE
-from orbveil.core.propagation import propagate_batch
-from orbveil.utils.constants import EARTH_MU_KM3_S2 as MU, EARTH_RADIUS_KM as RE
+from zerogravity.core.tle import TLE
+from zerogravity.core.propagation import propagate_batch
+from zerogravity.utils.constants import EARTH_MU_KM3_S2 as MU, EARTH_RADIUS_KM as RE
 
 logger = logging.getLogger(__name__)
 

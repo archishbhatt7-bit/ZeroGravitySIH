@@ -1,20 +1,20 @@
-# OrbVeil Project Memory & Architecture Plan
+# ZeroGravity Project Memory & Architecture Plan
 
 **IMPORTANT NOTE FOR AI AGENTS:** 
-If you are an AI assistant reading this file, you are likely working with the Frontend Developer on a separate workstation. Your primary goal is to build out the `dashboard/` directory using Vite, React, `react-globe.gl`, and vanilla CSS (Glassmorphism design). DO NOT modify the backend `src/orbveil/api/` logic unless absolutely necessary for CORS or testing. The backend is being handled by another developer.
+If you are an AI assistant reading this file, you are likely working with the Frontend Developer on a separate workstation. Your primary goal is to build out the `dashboard/` directory using Vite, React, `react-globe.gl`, and vanilla CSS (Glassmorphism design). DO NOT modify the backend `src/zerogravity/api/` logic unless absolutely necessary for CORS or testing. The backend is being handled by another developer.
 
 ---
 
 ## 1. Project Goal
-Transform the OrbVeil Python library into a stunning, full-stack web dashboard. 
+Transform the ZeroGravity Python library into a stunning, full-stack web dashboard. 
 - **The Core Feature:** A gorgeous 3D interactive Earth that visualizes satellite orbits and pinpoints potential collision events (conjunctions) in real-time.
 - **The UI:** A glassmorphic dashboard floating over the 3D globe, displaying risk assessments and satellite catalog data.
 
 ## 2. Division of Labor
 
-### Backend Developer (Working in `src/orbveil/api/` & `src/orbveil/core/`)
+### Backend Developer (Working in `src/zerogravity/api/` & `src/zerogravity/core/`)
 - Runs FastAPI on `localhost:8000`
-- Wraps the core OrbVeil KD-tree screening and Monte Carlo/Foster probability functions.
+- Wraps the core ZeroGravity KD-tree screening and Monte Carlo/Foster probability functions.
 - Serves REST endpoints to feed data to the frontend.
 
 ### Frontend Developer (Working in `dashboard/`)

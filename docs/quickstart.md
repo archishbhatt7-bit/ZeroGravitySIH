@@ -5,7 +5,7 @@ Get from zero to your first conjunction screening in under 5 minutes.
 ## Install
 
 ```bash
-pip install orbveil
+pip install zerogravity
 ```
 
 **Requirements:** Python 3.10+. Dependencies (`sgp4`, `numpy`, `scipy`) install automatically.
@@ -16,7 +16,7 @@ Screen the ISS against active LEO objects using TLEs from CelesTrak:
 
 ```python
 import requests
-from orbveil import parse_tle, screen
+from zerogravity import parse_tle, screen
 
 # Fetch current TLEs from CelesTrak
 iss_text = requests.get("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE").text
@@ -62,7 +62,7 @@ event.relative_velocity_km_s # closing speed at TCA
 For all-on-all screening (every object against every other), use `screen_catalog()` with KD-tree acceleration:
 
 ```python
-from orbveil import parse_tle, screen_catalog
+from zerogravity import parse_tle, screen_catalog
 
 catalog = parse_tle(open("catalog.tle").read())
 events = screen_catalog(catalog, hours=24, threshold_km=5.0)
@@ -75,7 +75,7 @@ print(f"Found {len(events)} close approaches in 24 hours")
 If you have a [Space-Track.org](https://www.space-track.org) account:
 
 ```python
-from orbveil import SpaceTrackClient
+from zerogravity import SpaceTrackClient
 
 client = SpaceTrackClient(identity="you@email.com", password="your_password")
 

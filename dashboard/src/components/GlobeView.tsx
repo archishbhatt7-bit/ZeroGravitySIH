@@ -28,11 +28,55 @@ export function GlobeView() {
   // Initialize globe
   useEffect(() => {
     if (globeEl.current) {
-      globeEl.current.controls().autoRotate = !!layerVisibility.autoRotate;
-      globeEl.current.controls().autoRotateSpeed = 0.3;
-      globeEl.current.controls().enableZoom = true;
+      const controls = globeEl.current.controls();
+      controls.autoRotate = !!layerVisibility.autoRotate;
+      controls.autoRotateSpeed = 0.3;
+      controls.enableZoom = true;
+      
       if (!globeReady) {
         globeEl.current.pointOfView({ altitude: 2.5 });
+        
+        // --- HD Graphics & Polishing ---
+        const scene = globeEl.current.scene();
+        
+        if (!scene.getObjectByName('clouds')) {
+          // 1. Add Specular Map for shiny oceans and matte land
+          const globeMaterial = globeEl.current.globeMaterial();
+          globeMaterial.bumpScale = 10;
+          new THREE.TextureLoader().load('//unpkg.com/three-globe/example/img/earth-water.png', texture => {
+            globeMaterial.specularMap = texture;
+            globeMaterial.specular = new THREE.Color('grey');
+            globeMaterial.shininess = 15;
+          });
+
+          // 2. Add realistic clouds layer
+          const clouds = new THREE.Mesh(
+            new THREE.SphereGeometry(globeEl.current.getGlobeRadius() * 1.012, 72, 72),
+            new THREE.MeshPhongMaterial({
+              map: new THREE.TextureLoader().load('//unpkg.com/three-globe/example/img/earth-clouds10k.png'),
+              transparent: true,
+              opacity: 0.6,
+              blending: THREE.AdditiveBlending,
+              side: THREE.DoubleSide,
+              depthWrite: false
+            })
+          );
+          clouds.name = 'clouds';
+          scene.add(clouds);
+
+          // 3. Add dramatic directional lighting for a gorgeous day/night terminator
+          const dLight = new THREE.DirectionalLight(0xffffff, 2.5);
+          dLight.position.set(-2, 0.5, 1.5);
+          scene.add(dLight);
+          
+          // Animate clouds rotating slowly
+          const rotateClouds = () => {
+            clouds.rotation.y += 0.0002;
+            requestAnimationFrame(rotateClouds);
+          };
+          rotateClouds();
+        }
+
         setGlobeReady(true);
       }
     }

@@ -1,6 +1,6 @@
-"""OrbVeil hosted API client.
+"""ZeroGravity hosted API client.
 
-Provides a high-level interface to the OrbVeil cloud service for
+Provides a high-level interface to the ZeroGravity cloud service for
 operators who want managed screening without running infrastructure.
 """
 
@@ -10,23 +10,23 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from orbveil.core.screening import ConjunctionEvent
-    from orbveil.core.tle import TLE
+    from zerogravity.core.screening import ConjunctionEvent
+    from zerogravity.core.tle import TLE
 
-_DEFAULT_BASE_URL = "https://api.orbveil.dev"
+_DEFAULT_BASE_URL = "https://api.zerogravity.dev"
 
 
 @dataclass
-class OrbVeil:
-    """Client for the OrbVeil hosted API.
+class ZeroGravity:
+    """Client for the ZeroGravity hosted API.
 
     Args:
-        api_key: Your OrbVeil API key (starts with ``og_``).
+        api_key: Your ZeroGravity API key (starts with ``og_``).
         base_url: API base URL. Defaults to production.
 
     Example::
 
-        og = OrbVeil(api_key="og_live_abc123")
+        og = ZeroGravity(api_key="og_live_abc123")
         catalog = og.load_catalog(operator="STARLINK")
         events = og.screen(catalog, threshold=1e-5)
     """
@@ -35,7 +35,7 @@ class OrbVeil:
     base_url: str = _DEFAULT_BASE_URL
 
     def load_catalog(self, *, operator: str | None = None) -> list[TLE]:
-        """Load a TLE catalog from the OrbVeil service.
+        """Load a TLE catalog from the ZeroGravity service.
 
         Args:
             operator: Filter by operator name.
@@ -47,8 +47,8 @@ class OrbVeil:
             NotImplementedError: The hosted API is not yet available.
         """
         raise NotImplementedError(
-            "The OrbVeil hosted API is coming soon. "
-            "Sign up at https://orbveil.dev for early access."
+            "The ZeroGravity hosted API is coming soon. "
+            "Sign up at https://zerogravity.dev for early access."
         )
 
     def screen(
@@ -72,6 +72,6 @@ class OrbVeil:
             NotImplementedError: The hosted API is not yet available.
         """
         raise NotImplementedError(
-            "The OrbVeil hosted API is coming soon. "
-            "Sign up at https://orbveil.dev for early access."
+            "The ZeroGravity hosted API is coming soon. "
+            "Sign up at https://zerogravity.dev for early access."
         )

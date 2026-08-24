@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
-from orbveil.data.cdm import CDM, CDMObject
-from orbveil.data.spacetrack import SpaceTrackClient
+from zerogravity.data.cdm import CDM, CDMObject
+from zerogravity.data.spacetrack import SpaceTrackClient
 
 
 # Realistic CDM test fixture in KVN format (CCSDS 508.0-B-1)

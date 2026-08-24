@@ -9,11 +9,11 @@ from datetime import datetime, timezone, timedelta
 import numpy as np
 from sgp4.api import Satrec, jday
 
-from orbveil.core.tle import parse_tle
-from orbveil.core.screening import screen_catalog
-from orbveil.core.risk import classify_events
-from orbveil.core.formations import filter_formation_events
-from orbveil.core.probability import compute_pc, PcMethod
+from zerogravity.core.tle import parse_tle
+from zerogravity.core.screening import screen_catalog
+from zerogravity.core.risk import classify_events
+from zerogravity.core.formations import filter_formation_events
+from zerogravity.core.probability import compute_pc, PcMethod
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -74,6 +74,19 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
                 tles = parse_tle(f.read())
         else:
             raise e
+            
+    # Filter to Low Earth Orbit (LEO) only
+    # LEO altitude <= 2000km corresponds to a mean motion >= 11.25 revs/day
+    leo_tles = []
+    for t in tles:
+        try:
+            mm = float(t.line2[52:63].strip())
+            if mm >= 11.25:
+                leo_tles.append(t)
+        except Exception:
+            pass
+            
+    tles = leo_tles
         
     cache[cache_key] = tles
     cache[fetch_key] = now
@@ -546,4 +559,4 @@ async def get_conjunctions(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("orbveil.api.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("zerogravity.api.main:app", host="0.0.0.0", port=8000, reload=True)

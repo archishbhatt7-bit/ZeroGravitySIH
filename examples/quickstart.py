@@ -1,6 +1,6 @@
-"""OrbVeil Quickstart — parse a TLE and inspect orbital elements."""
+"""ZeroGravity Quickstart — parse a TLE and inspect orbital elements."""
 
-from orbveil import TLE, parse_tle
+from zerogravity import TLE, parse_tle
 
 # ISS (ZARYA) TLE
 tle_text = """
@@ -21,7 +21,7 @@ print(f"Ecc:       {iss.eccentricity:.7f}")
 print(f"Period:    {1440 / iss.mean_motion_rev_per_day:.1f} min")
 
 # When screening is available (v0.2+):
-# from orbveil import screen
+# from zerogravity import screen
 # events = screen(norad_id=25544, days=7)
 # for e in events:
 #     print(f"{e.tca} | {e.miss_distance_km:.2f} km | Pc={e.probability:.2e}")

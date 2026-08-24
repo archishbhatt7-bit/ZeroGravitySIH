@@ -1,5 +1,5 @@
 """
-OrbVeil — Satellite conjunction assessment for Python.
+ZeroGravity — Satellite conjunction assessment for Python.
 
 Open-source library for screening conjunctions, parsing CDMs,
 and computing collision probability. Built for operators who
@@ -10,12 +10,12 @@ from __future__ import annotations
 
 __version__ = "0.1.0-dev"
 
-from orbveil.core.tle import TLE, parse_tle
-from orbveil.core.propagation import propagate, propagate_batch, StateVector
-from orbveil.core.screening import screen, screen_catalog, filter_stale_tles, ConjunctionEvent
-from orbveil.core.probability import compute_pc, PcMethod, PcResult
-from orbveil.data.cdm import CDM, CDMObject
-from orbveil.data.spacetrack import SpaceTrackClient
+from zerogravity.core.tle import TLE, parse_tle
+from zerogravity.core.propagation import propagate, propagate_batch, StateVector
+from zerogravity.core.screening import screen, screen_catalog, filter_stale_tles, ConjunctionEvent
+from zerogravity.core.probability import compute_pc, PcMethod, PcResult
+from zerogravity.data.cdm import CDM, CDMObject
+from zerogravity.data.spacetrack import SpaceTrackClient
 
 __all__ = [
     "__version__",

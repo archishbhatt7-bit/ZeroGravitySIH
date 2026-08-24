@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "orbveil"
+name = "zerogravity"
 version = "0.1.0-dev"
 description = "Collision avoidance for satellite operators. Screen conjunctions, estimate collision probability, and protect your constellation."
 readme = "README.md"
@@ -32,16 +32,16 @@ dependencies = [
 gpu = ["torch>=2.0"]
 batch = ["polars>=0.20"]
 api = ["fastapi", "uvicorn", "pydantic", "httpx"]
-all = ["orbveil[gpu,batch,api]"]
+all = ["zerogravity[gpu,batch,api]"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff", "mypy"]
 
 [project.urls]
-Homepage = "https://orbveil.dev"
-Documentation = "https://docs.orbveil.dev"
-Repository = "https://github.com/ncdrone/orbveil"
+Homepage = "https://zerogravity.dev"
+Documentation = "https://docs.zerogravity.dev"
+Repository = "https://github.com/ncdrone/zerogravity"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/orbveil"]
+packages = ["src/zerogravity"]
 
 [tool.ruff]
 target-version = "py310"

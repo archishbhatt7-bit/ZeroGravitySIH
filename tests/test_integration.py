@@ -6,9 +6,9 @@ from datetime import timedelta
 import numpy as np
 import pytest
 
-from orbveil.core.tle import TLE, parse_tle
-from orbveil.core.propagation import propagate
-from orbveil.core.screening import screen, ConjunctionEvent
+from zerogravity.core.tle import TLE, parse_tle
+from zerogravity.core.propagation import propagate
+from zerogravity.core.screening import screen, ConjunctionEvent
 
 # Hardcoded real TLEs (no network calls)
 ISS_TLE_TEXT = """\

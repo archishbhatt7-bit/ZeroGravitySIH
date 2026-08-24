@@ -1,13 +1,13 @@
-"""OrbVeil Batch Screening — screen an entire constellation.
+"""ZeroGravity Batch Screening — screen an entire constellation.
 
 This example demonstrates the class-based API for advanced workflows.
-Requires a running OrbVeil API instance or API key.
+Requires a running ZeroGravity API instance or API key.
 """
 
-from orbveil import OrbVeil
+from zerogravity import ZeroGravity
 
 # Initialize with API key
-og = OrbVeil(api_key="og_live_your_key_here")
+og = ZeroGravity(api_key="og_live_your_key_here")
 
 # Load your constellation's catalog
 # catalog = og.load_catalog(operator="STARLINK")
@@ -23,5 +23,5 @@ og = OrbVeil(api_key="og_live_your_key_here")
 #         print(f"   Miss distance: {event.miss_distance_km:.2f} km")
 #         print(f"   Pc: {event.probability:.2e}")
 
-print("Batch screening will be available in OrbVeil v0.2.")
-print("Sign up at https://orbveil.dev for early access.")
+print("Batch screening will be available in ZeroGravity v0.2.")
+print("Sign up at https://zerogravity.dev for early access.")

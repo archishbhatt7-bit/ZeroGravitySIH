@@ -2,7 +2,7 @@
 
 import pytest
 
-from orbveil.core.tle import TLE, parse_tle
+from zerogravity.core.tle import TLE, parse_tle
 
 # ISS (ZARYA) TLE — a well-known reference
 ISS_NAME = "ISS (ZARYA)"
