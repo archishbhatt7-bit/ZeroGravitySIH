@@ -1,23 +1,28 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import Globe from "react-globe.gl";
+import { Viewer, Entity, PointGraphics, PolylineGraphics } from "resium";
+import * as Cesium from "cesium";
 import * as satellite from "satellite.js";
-import * as THREE from "three";
 import { useStore } from "../store";
+import { Plus, Minus, Lock, Unlock, Compass } from "lucide-react";
+
+// Set Ion token if available in env
+if (import.meta.env.VITE_CESIUM_ION_TOKEN) {
+  Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN;
+}
 
 interface SatPoint {
-  lat: number;
-  lng: number;
-  alt: number;
-  color: string;
-  radius: number;
+  id: string;
+  position: Cesium.Cartesian3;
+  color: Cesium.Color;
+  pixelSize: number;
   sat: { norad_id: number; name: string; object_type: string };
 }
 
 export function GlobeView() {
-  const globeEl = useRef<any>();
-  const [globeReady, setGlobeReady] = useState(false);
+  const viewerRef = useRef<any>(null);
   const satrecsRef = useRef<Map<number, any>>(new Map());
   const [satPositions, setSatPositions] = useState<SatPoint[]>([]);
+  const [isViewLocked, setIsViewLocked] = useState(false);
 
   const {
     satellites,
@@ -30,72 +35,6 @@ export function GlobeView() {
     layerVisibility,
     isAnalysisMode,
   } = useStore();
-
-  // Initialize globe
-  useEffect(() => {
-    if (globeEl.current) {
-      const controls = globeEl.current.controls();
-      controls.autoRotate = !!layerVisibility.autoRotate;
-      controls.autoRotateSpeed = 0.3;
-      controls.enableZoom = true;
-
-      if (!globeReady) {
-        globeEl.current.pointOfView({ altitude: 2.5 });
-
-        // --- HD Graphics & Polishing ---
-        const scene = globeEl.current.scene();
-
-        if (!scene.getObjectByName("clouds")) {
-          // 1. Add Specular Map for shiny oceans and matte land
-          const globeMaterial = globeEl.current.globeMaterial();
-          globeMaterial.bumpScale = 10;
-          new THREE.TextureLoader().load(
-            "//unpkg.com/three-globe/example/img/earth-water.png",
-            (texture) => {
-              globeMaterial.specularMap = texture;
-              globeMaterial.specular = new THREE.Color("grey");
-              globeMaterial.shininess = 15;
-            },
-          );
-
-          // 2. Add realistic clouds layer
-          const clouds = new THREE.Mesh(
-            new THREE.SphereGeometry(
-              globeEl.current.getGlobeRadius() * 1.012,
-              72,
-              72,
-            ),
-            new THREE.MeshPhongMaterial({
-              map: new THREE.TextureLoader().load(
-                "//unpkg.com/three-globe/example/img/earth-clouds10k.png",
-              ),
-              transparent: true,
-              opacity: 0.6,
-              blending: THREE.AdditiveBlending,
-              side: THREE.DoubleSide,
-              depthWrite: false,
-            }),
-          );
-          clouds.name = "clouds";
-          scene.add(clouds);
-
-          // 3. Add dramatic directional lighting for a gorgeous day/night terminator
-          const dLight = new THREE.DirectionalLight(0xffffff, 2.5);
-          dLight.position.set(-2, 0.5, 1.5);
-          scene.add(dLight);
-
-          // Animate clouds rotating slowly
-          const rotateClouds = () => {
-            clouds.rotation.y += 0.0002;
-            requestAnimationFrame(rotateClouds);
-          };
-          rotateClouds();
-        }
-
-        setGlobeReady(true);
-      }
-    }
-  }, [layerVisibility.autoRotate, globeReady]);
 
   // Parse TLEs into satrecs (cached)
   useEffect(() => {
@@ -121,11 +60,9 @@ export function GlobeView() {
     const mode = state.isAnalysisMode;
     const eventId = state.selectedEventId;
 
-    // Create a set of NORAD IDs that should be visible in analysis mode
     const analysisNoradIds = new Set<number>();
     if (mode) {
       if (eventId) {
-        // Only show satellites for the selected event
         const event = state.conjunctions.find(
           (c) =>
             `${c.primary.norad_id}-${c.secondary.norad_id}-${c.tca}` ===
@@ -136,7 +73,6 @@ export function GlobeView() {
           analysisNoradIds.add(event.secondary.norad_id);
         }
       } else {
-        // Show all satellites involved in any conjunction
         state.conjunctions.forEach((c) => {
           analysisNoradIds.add(c.primary.norad_id);
           analysisNoradIds.add(c.secondary.norad_id);
@@ -145,10 +81,8 @@ export function GlobeView() {
     }
 
     for (const sat of satellites) {
-      // In analysis mode, filter out unneeded satellites
       if (mode && !analysisNoradIds.has(sat.norad_id)) continue;
 
-      // Filter by layer visibility (only applies if not in analysis mode, or if they are in analysis mode we can ignore layer toggles or keep them)
       if (!mode) {
         if (
           sat.object_type === "ACTIVE_SATELLITE" &&
@@ -170,34 +104,32 @@ export function GlobeView() {
           const geodetic = satellite.eciToGeodetic(posVel.position, gmst);
           const lat = satellite.degreesLat(geodetic.latitude);
           const lng = satellite.degreesLong(geodetic.longitude);
-          const alt = geodetic.height / 6371; // Normalize to globe scale
+          const alt = geodetic.height * 1000; // satellite.js height is km, Cesium wants meters
 
-          let color = "rgba(255, 255, 255, 0.4)";
-          let radius = 0.4; // Scaled for THREE.SphereGeometry
+          let color = Cesium.Color.fromCssColorString("rgba(255, 255, 255, 0.4)");
+          let pixelSize = 2;
 
           if (sat.object_type === "ACTIVE_SATELLITE") {
-            color = "#00f0ff";
-            radius = 0.8;
+            color = Cesium.Color.fromCssColorString("#00f0ff");
+            pixelSize = 4;
           } else if (sat.object_type === "DEBRIS") {
-            color = "#999999";
-            radius = 0.3;
+            color = Cesium.Color.fromCssColorString("#999999");
+            pixelSize = 2;
           } else if (sat.object_type === "ROCKET_BODY") {
-            color = "#eab308";
-            radius = 0.6;
+            color = Cesium.Color.fromCssColorString("#eab308");
+            pixelSize = 3;
           }
 
-          // Highlight selected
           if (sat.norad_id === useStore.getState().selectedSatelliteId) {
-            color = "#ffffff";
-            radius = 1.5;
+            color = Cesium.Color.WHITE;
+            pixelSize = 8;
           }
 
           points.push({
-            lat,
-            lng,
-            alt,
+            id: `sat-${sat.norad_id}`,
+            position: Cesium.Cartesian3.fromDegrees(lng, lat, alt),
             color,
-            radius,
+            pixelSize,
             sat: {
               norad_id: sat.norad_id,
               name: sat.name,
@@ -239,66 +171,62 @@ export function GlobeView() {
     satellites.length,
   ]);
 
-  // Conjunction rings — real positions from API
+  // Conjunction Highlights
   const ringsData = useMemo(() => {
-    if (!globeReady || !layerVisibility.conjunctionHighlights) return [];
+    if (!layerVisibility.conjunctionHighlights) return [];
 
-    return conjunctions.slice(0, 80).map((c) => ({
-      lat: c.lat,
-      lng: c.lng,
-      maxR:
-        c.risk_category === "CRITICAL"
-          ? 5
-          : c.risk_category === "HIGH"
-            ? 3
-            : 1.5,
-      propagationSpeed: c.risk_category === "CRITICAL" ? 2.5 : 1.5,
-      repeatPeriod: c.risk_category === "CRITICAL" ? 600 : 1000,
-      color:
-        c.risk_category === "CRITICAL"
+    return conjunctions.slice(0, 80).map((c, idx) => {
+       const colorStr = c.risk_category === "CRITICAL"
           ? "#ef4444"
           : c.risk_category === "HIGH"
             ? "#f97316"
             : c.risk_category === "MEDIUM"
               ? "#eab308"
-              : "rgba(100, 120, 255, 0.5)",
-    }));
-  }, [conjunctions, globeReady, layerVisibility.conjunctionHighlights]);
+              : "rgba(100, 120, 255, 0.5)";
+              
+       const pixelSize = c.risk_category === "CRITICAL" ? 20 : (c.risk_category === "HIGH" ? 15 : 10);
+       return {
+         id: `ring-${idx}`,
+         position: Cesium.Cartesian3.fromDegrees(c.lng, c.lat, c.alt * 1000), 
+         color: Cesium.Color.fromCssColorString(colorStr),
+         pixelSize
+       };
+    });
+  }, [conjunctions, layerVisibility.conjunctionHighlights]);
 
-  // Orbit arc path for selected satellite or conjunction
+  // Orbit Paths
   const pathsData = useMemo(() => {
-    if (!globeReady || !layerVisibility.orbitPaths) return [];
+    if (!layerVisibility.orbitPaths) return [];
 
     const paths = [];
     const now = new Date();
 
-    // Helper to generate path for a satellite
     const getPath = (
       satrec: any,
       startTime: Date,
       durationMins: number,
-      color: string[],
+      color: Cesium.Color,
     ) => {
-      const coords = [];
+      const positions = [];
       for (let i = 0; i <= durationMins; i += 2) {
-        // 2 minute steps for smoothness
         const t = new Date(startTime.getTime() + i * 60000);
         const gmst = satellite.gstime(t);
         const posVel = satellite.propagate(satrec, t);
         if (posVel.position && typeof posVel.position !== "boolean") {
           const geodetic = satellite.eciToGeodetic(posVel.position, gmst);
-          coords.push([
-            satellite.degreesLat(geodetic.latitude),
-            satellite.degreesLong(geodetic.longitude),
-            geodetic.height / 6371,
-          ]);
+          positions.push(
+            Cesium.Cartesian3.fromDegrees(
+              satellite.degreesLong(geodetic.longitude),
+              satellite.degreesLat(geodetic.latitude),
+              geodetic.height * 1000
+            )
+          );
         }
       }
-      return { coords, color };
+      return { positions, color };
     };
 
     if (selectedEventId) {
-      // Show paths for both satellites involved in the conjunction
       const event = conjunctions.find(
         (c) =>
           `${c.primary.norad_id}-${c.secondary.norad_id}-${c.tca}` ===
@@ -306,54 +234,20 @@ export function GlobeView() {
       );
       if (event) {
         let sat1 = satrecsRef.current.get(event.primary.norad_id);
-        if (!sat1 && event.primary.line1 && event.primary.line2) {
-          try {
-            sat1 = satellite.twoline2satrec(
-              event.primary.line1,
-              event.primary.line2,
-            );
-          } catch {}
-        }
-
         let sat2 = satrecsRef.current.get(event.secondary.norad_id);
-        if (!sat2 && event.secondary.line1 && event.secondary.line2) {
-          try {
-            sat2 = satellite.twoline2satrec(
-              event.secondary.line1,
-              event.secondary.line2,
-            );
-          } catch {}
-        }
 
         const tca = new Date(event.tca);
-        // Path from 45 mins before TCA to 45 mins after TCA
         const start = new Date(tca.getTime() - 45 * 60000);
 
         if (sat1)
-          paths.push(
-            getPath(sat1, start, 90, [
-              "rgba(0, 240, 255, 1)",
-              "rgba(0, 240, 255, 0.1)",
-            ]),
-          );
+          paths.push(getPath(sat1, start, 90, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.5)")));
         if (sat2)
-          paths.push(
-            getPath(sat2, start, 90, [
-              "rgba(255, 150, 0, 1)",
-              "rgba(255, 150, 0, 0.1)",
-            ]),
-          );
+          paths.push(getPath(sat2, start, 90, Cesium.Color.fromCssColorString("rgba(255, 150, 0, 0.5)")));
       }
     } else if (selectedSatelliteId) {
-      // Show path for single selected satellite
       const sat = satrecsRef.current.get(selectedSatelliteId);
       if (sat) {
-        paths.push(
-          getPath(sat, now, 90, [
-            "rgba(0, 240, 255, 1)",
-            "rgba(0, 240, 255, 0.1)",
-          ]),
-        );
+        paths.push(getPath(sat, now, 90, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.5)")));
       }
     }
 
@@ -362,70 +256,193 @@ export function GlobeView() {
     selectedEventId,
     selectedSatelliteId,
     conjunctions,
-    globeReady,
     layerVisibility.orbitPaths,
   ]);
 
-  // Camera animation when focusTarget changes
+  // Camera animation
   useEffect(() => {
-    if (focusTarget && globeEl.current) {
-      globeEl.current.controls().autoRotate = false; // Always stop rotation when zooming to target
-      globeEl.current.pointOfView(
-        { lat: focusTarget.lat, lng: focusTarget.lng, altitude: 1.5 },
-        1500,
+    if (focusTarget && viewerRef.current?.cesiumElement) {
+      const viewer = viewerRef.current.cesiumElement;
+      
+      const targetPosition = Cesium.Cartesian3.fromDegrees(
+        focusTarget.lng,
+        focusTarget.lat,
+        (focusTarget.alt * 1000) + 1500000 
       );
+      
+      viewer.camera.flyTo({
+        destination: targetPosition,
+        duration: 1.5,
+      });
       setTimeout(() => setFocusTarget(null), 1600);
     }
   }, [focusTarget, setFocusTarget]);
 
-  return (
-    <div className="absolute inset-0 z-0">
-      <Globe
-        ref={globeEl}
-        globeImageUrl={
-          layerVisibility.mapStyle === "night"
-            ? "//unpkg.com/three-globe/example/img/earth-night.jpg"
-            : "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+  // Initialize viewer: imagery, click handler, scene settings.
+  // Using useEffect + ref polling because Resium's onReady callback
+  // does not fire reliably with Cesium 1.144.
+  const viewerInitialized = useRef(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer || viewerInitialized.current) return;
+      viewerInitialized.current = true;
+      clearInterval(interval);
+
+      console.log("[ZG] Viewer detected, initializing...");
+
+      // Click handler for satellite picking
+      const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+      handler.setInputAction((click: any) => {
+        const pickedObject = viewer.scene.pick(click.position);
+        if (Cesium.defined(pickedObject) && pickedObject.id && typeof pickedObject.id.id === 'string' && pickedObject.id.id.startsWith("sat-")) {
+           const satId = parseInt(pickedObject.id.id.replace("sat-", ""), 10);
+           setSelectedSatellite(satId);
+           const pt = satPositions.find(p => p.sat.norad_id === satId);
+           if(pt) {
+               const carto = Cesium.Cartographic.fromCartesian(pt.position);
+               setFocusTarget({
+                   lat: Cesium.Math.toDegrees(carto.latitude),
+                   lng: Cesium.Math.toDegrees(carto.longitude),
+                   alt: carto.height / 1000
+               });
+           }
         }
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        atmosphereColor="#00aaff"
-        atmosphereAltitude={0.2}
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-        // Render satellites as floating 3D objects instead of vertical bars
-        objectsData={satPositions}
-        objectLat="lat"
-        objectLng="lng"
-        objectAltitude="alt"
-        objectThreeObject={(d: any) => {
-          return new THREE.Mesh(
-            new THREE.SphereGeometry(d.radius),
-            new THREE.MeshBasicMaterial({ color: d.color }),
+      // Scene aesthetics
+      viewer.scene.globe.enableLighting = true;
+      viewer.scene.skyAtmosphere.show = true;
+      viewer.scene.fog.enabled = true;
+      viewer.scene.globe.showGroundAtmosphere = true;
+
+      // Remove double click zoom
+      viewer.screenSpaceEventHandler.removeInputAction(
+        Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+      );
+
+      // Replace default Ion imagery with reliable offline + online layers
+      viewer.imageryLayers.removeAll();
+      (async () => {
+        try {
+          // Primary: Cesium's bundled Natural Earth II (always works, no network needed)
+          const natural = await Cesium.TileMapServiceImageryProvider.fromUrl(
+            Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
           );
-        }}
+          viewer.imageryLayers.addImageryProvider(natural);
 
-        ringsData={ringsData}
-        ringColor="color"
-        ringMaxRadius="maxR"
-        ringPropagationSpeed="propagationSpeed"
-        ringRepeatPeriod="repeatPeriod"
+          // Overlay: ESRI World Imagery for higher res when zoomed in (free, no token)
+          try {
+            const esri = new Cesium.UrlTemplateImageryProvider({
+              url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+              credit: new Cesium.Credit("Tiles © Esri"),
+              maximumLevel: 18,
+            });
+            viewer.imageryLayers.addImageryProvider(esri);
+          } catch {
+            // ESRI overlay is optional — Natural Earth II is sufficient
+          }
+        } catch (e) {
+          console.error("[ZG] Failed to load any imagery:", e);
+        }
+      })();
+    }, 200);
 
-        pathsData={pathsData}
-        pathPoints="coords"
-        pathPointLat={(p: any) => p[0]}
-        pathPointLng={(p: any) => p[1]}
-        pathPointAlt={(p: any) => p[2]}
-        pathColor="color"
-        pathStroke={2.5}
-        pathDashLength={0.05}
-        pathDashGap={0.02}
-        pathDashAnimateTime={4000}
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-        onObjectClick={(pt: any) => {
-          setSelectedSatellite(pt.sat.norad_id);
-          setFocusTarget({ lat: pt.lat, lng: pt.lng, alt: pt.alt });
-        }}
-      />
+  // Handle locking the orbital view
+  useEffect(() => {
+    if (viewerRef.current?.cesiumElement) {
+      viewerRef.current.cesiumElement.scene.screenSpaceCameraController.enableTilt = !isViewLocked;
+    }
+  }, [isViewLocked, viewerInitialized.current]); // Also run if initialization completes
+
+  return (
+    <div style={{ width: "100%", height: "100%", background: "#050505", position: "relative" }}>
+      {/* Map Controls */}
+      <div style={{ position: "absolute", top: "16px", left: "16px", zIndex: 10, display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div style={{ display: "flex", flexDirection: "column", background: "rgba(10, 12, 18, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", overflow: "hidden", backdropFilter: "blur(8px)" }}>
+          <button 
+            onClick={() => viewerRef.current?.cesiumElement?.camera.zoomIn(2000000)}
+            style={{ padding: "8px", color: "#ccc", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent", border: "none", cursor: "pointer", display: "flex", justifyContent: "center" }}
+            onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+            onMouseLeave={e => e.currentTarget.style.color = "#ccc"}
+            title="Zoom In"
+          >
+            <Plus size={16} />
+          </button>
+          <button 
+            onClick={() => viewerRef.current?.cesiumElement?.camera.zoomOut(2000000)}
+            style={{ padding: "8px", color: "#ccc", background: "transparent", border: "none", cursor: "pointer", display: "flex", justifyContent: "center" }}
+            onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+            onMouseLeave={e => e.currentTarget.style.color = "#ccc"}
+            title="Zoom Out"
+          >
+            <Minus size={16} />
+          </button>
+        </div>
+
+        <button
+          onClick={() => setIsViewLocked(!isViewLocked)}
+          style={{ padding: "8px", color: isViewLocked ? "#ff9500" : "#ccc", background: "rgba(10, 12, 18, 0.8)", border: `1px solid ${isViewLocked ? 'rgba(255,150,0,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "center", backdropFilter: "blur(8px)", transition: "all 0.2s" }}
+          title={isViewLocked ? "Unlock View" : "Lock Orbital View (Prevent Tilt)"}
+        >
+          {isViewLocked ? <Lock size={16} /> : <Unlock size={16} />}
+        </button>
+
+        <button
+          onClick={() => viewerRef.current?.cesiumElement?.camera.flyHome(1.5)}
+          style={{ padding: "8px", color: "#ccc", background: "rgba(10, 12, 18, 0.8)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "center", backdropFilter: "blur(8px)" }}
+          onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+          onMouseLeave={e => e.currentTarget.style.color = "#ccc"}
+          title="Reset View"
+        >
+          <Compass size={16} />
+        </button>
+      </div>
+
+      <Viewer
+        ref={viewerRef}
+        full
+        timeline={false}
+        animation={false}
+        navigationHelpButton={false}
+        geocoder={false}
+        homeButton={false}
+        sceneModePicker={false}
+        baseLayerPicker={false}
+        infoBox={false}
+        selectionIndicator={false}
+        fullscreenButton={false}
+        scene3DOnly={true}
+      >
+        {/* Satellites */}
+        {satPositions.map((pt) => (
+          <Entity key={pt.id} id={pt.id} position={pt.position} description={pt.sat.name}>
+            <PointGraphics color={pt.color} pixelSize={pt.pixelSize} />
+          </Entity>
+        ))}
+
+        {/* Conjunction Highlights */}
+        {ringsData.map((r) => (
+          <Entity key={r.id} position={r.position}>
+             <PointGraphics color={r.color} pixelSize={r.pixelSize} outlineColor={Cesium.Color.WHITE} outlineWidth={2} />
+          </Entity>
+        ))}
+
+        {/* Orbit Paths */}
+        {pathsData.map((p, idx) => (
+          <Entity key={`path-${idx}`}>
+            <PolylineGraphics
+              positions={p.positions}
+              width={2}
+              material={p.color}
+            />
+          </Entity>
+        ))}
+      </Viewer>
     </div>
   );
 }

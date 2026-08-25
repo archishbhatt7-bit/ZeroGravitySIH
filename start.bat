@@ -1,6 +1,6 @@
 @echo off
 echo Starting ZeroGravity Backend...
-start cmd /k "cd /d %~dp0 && set PYTHONPATH=src && python -m uvicorn zerogravity.api.main:app --reload --host 0.0.0.0 --port 8000"
+start cmd /k "cd /d %~dp0 && call .venv\Scripts\activate.bat && set PYTHONPATH=src && python -m uvicorn zerogravity.api.main:app --reload --host 0.0.0.0 --port 8000"
 
 echo Starting ZeroGravity Frontend...
 start cmd /k "cd /d %~dp0dashboard && npm run dev"

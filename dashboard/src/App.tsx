@@ -2,13 +2,11 @@ import { useEffect } from "react";
 import { useStore } from "./store";
 import { GlobeView } from "./components/GlobeView";
 import { TopBar } from "./components/TopBar";
-import { ControlPanel } from "./components/ControlPanel";
-import { ConjunctionList } from "./components/ConjunctionList";
-import { EventDetail } from "./components/EventDetail";
-import { ObjectInfoPanel } from "./components/ObjectInfoPanel";
+import { StatusTicker } from "./components/StatusTicker";
+import { StatsCards } from "./components/StatsCards";
+import { IntelPanel } from "./components/IntelPanel";
+import { GlobeLegend } from "./components/GlobeLegend";
 import { LoadingOverlay } from "./components/LoadingOverlay";
-import { SearchBar } from "./components/SearchBar";
-import { LayerToggles } from "./components/LayerToggles";
 
 function App() {
   const {
@@ -22,8 +20,6 @@ function App() {
     setSelectedSatellite,
     setSelectedEvent,
     setFocusTarget,
-    isAnalysisMode,
-    setAnalysisMode,
   } = useStore();
 
   useEffect(() => {
@@ -51,50 +47,33 @@ function App() {
         setSelectedSatellite(null);
         setSelectedEvent(null);
         setFocusTarget(null);
-        setAnalysisMode(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setSelectedSatellite, setSelectedEvent, setFocusTarget, setAnalysisMode]);
+  }, [setSelectedSatellite, setSelectedEvent, setFocusTarget]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#05060a] text-white font-sans">
+    <div className="app-grid">
       <LoadingOverlay />
 
-      {/* 3D Background */}
-      <GlobeView />
-
-      {/* UI Overlay */}
+      {/* Row 1: Navbar */}
       <TopBar />
 
-      {!isAnalysisMode && <SearchBar />}
-      {!isAnalysisMode && <ControlPanel />}
-      {!isAnalysisMode && <LayerToggles />}
+      {/* Row 2: Status Ticker */}
+      <StatusTicker />
 
-      {isAnalysisMode && <ConjunctionList />}
-      {isAnalysisMode && <EventDetail />}
+      {/* Row 3: Stats Cards */}
+      <StatsCards />
 
-      {!isAnalysisMode && <ObjectInfoPanel />}
-
-      {/* Analyze Toggle Button */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
-        {!isAnalysisMode ? (
-          <button
-            onClick={() => setAnalysisMode(true)}
-            className="px-8 py-3 bg-red-500/20 text-red-400 border border-red-500/50 rounded-full font-bold shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:bg-red-500/30 hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] transition-all hover-lift"
-          >
-            ANALYZE CONJUNCTIONS
-          </button>
-        ) : (
-          <button
-            onClick={() => setAnalysisMode(false)}
-            className="px-6 py-2 bg-slate-800/50 text-slate-300 border border-white/10 rounded-full font-semibold hover:bg-slate-700/50 transition-all hover-lift text-sm"
-          >
-            EXIT ANALYSIS
-          </button>
-        )}
+      {/* Row 4 Left: Globe */}
+      <div className="area-globe">
+        <GlobeView />
+        <GlobeLegend />
       </div>
+
+      {/* Row 4 Right: Intelligence Panel */}
+      <IntelPanel />
     </div>
   );
 }

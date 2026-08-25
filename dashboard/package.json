@@ -11,15 +11,16 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "cesium": "^1.120.0",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-globe.gl": "^2.38.0",
+    "resium": "^1.25.0",
     "recharts": "^3.10.1",
     "satellite.js": "^7.1.0",
     "tailwindcss": "^4.3.3",
-    "three": "^0.185.1",
+    "vite-plugin-cesium": "^1.2.23",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
