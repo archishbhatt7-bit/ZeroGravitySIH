@@ -13,6 +13,7 @@ interface DashboardState {
   loading: boolean;
   error: string | null;
   lastRefresh: Date | null;
+  totalScreenedCount: number | null;
 
   // Selection state
   selectedSatelliteId: number | null;
@@ -71,6 +72,7 @@ export const useStore = create<DashboardState>((set, get) => ({
   loading: false,
   error: null,
   lastRefresh: null,
+  totalScreenedCount: null,
 
   selectedSatelliteId: null,
   selectedEventId: null,
@@ -89,7 +91,7 @@ export const useStore = create<DashboardState>((set, get) => ({
   filterFormations: true,
   autoRefreshInterval: 0,
   dataSource: "celestrak_active",
-  staleTleDays: 3,
+  staleTleDays: 7,
 
   layerVisibility: {
     activeSatellites: true,
@@ -125,6 +127,7 @@ export const useStore = create<DashboardState>((set, get) => ({
       set({
         satellites: satData.satellites,
         conjunctions: conjData.conjunctions,
+        totalScreenedCount: conjData.total_screened,
         loading: false,
         lastRefresh: new Date(),
         error: null,

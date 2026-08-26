@@ -566,7 +566,7 @@ async def get_conjunctions(
         and cache["last_screen_params"] == params
         and (now - cache["last_screen_time"]).total_seconds() < 3600
     ):
-        return {"conjunctions": cache["conjunctions"]}
+        return {"conjunctions": cache["conjunctions"], "total_screened": len(tles)}
 
     events = screen_catalog(
         tles=tles,
@@ -583,7 +583,7 @@ async def get_conjunctions(
     cache["last_screen_params"] = params
     cache["last_screen_time"] = now
 
-    return {"conjunctions": results}
+    return {"conjunctions": results, "total_screened": len(tles)}
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import { useStore } from "../store";
 
 export function StatsCards() {
-  const { satellites, conjunctions, lastRefresh } = useStore();
+  const { totalScreenedCount, satellites, conjunctions, lastRefresh } = useStore();
 
   const critCount = conjunctions.filter(c => c.risk_category === "CRITICAL").length;
   const highCount = conjunctions.filter(c => c.risk_category === "HIGH").length;
@@ -18,12 +18,14 @@ export function StatsCards() {
   const kesslerLevel = maxRisk > 80 ? "HIGH" : maxRisk > 50 ? "MEDIUM" : "LOW";
   const kesslerColor = maxRisk > 80 ? "#ef4444" : maxRisk > 50 ? "#eab308" : "#22c55e";
 
+  const displayCount = totalScreenedCount !== null ? totalScreenedCount : satellites.length;
+
   return (
     <div className="stats-row area-stats">
       <div className="stat-card">
         <span className="stat-card-label">Total Tracked Objects</span>
         <span className="stat-card-value" style={{ color: "#fff" }}>
-          {satellites.length.toLocaleString()}
+          {displayCount.toLocaleString()}
         </span>
         <span className="stat-card-sub">cataloged across all orbital regimes</span>
       </div>
