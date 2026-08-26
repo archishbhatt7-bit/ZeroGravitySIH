@@ -365,8 +365,8 @@ def screen_catalog(
     e, r_arr, v_arr = sat_arr.sgp4(jd, fr)
     # r_arr shape: (n_sats, n_times, 3), v_arr same
 
-    # Screen with KD-tree at each timestep
-    pairs: dict[tuple[int, int], ConjunctionEvent] = {}
+    # Screen with KD-tree at each timestep to find coarse approaches
+    coarse_pairs: dict[tuple[int, int], list[tuple[datetime, float, NDArray, NDArray]]] = {}
 
     for ti in range(steps):
         pos = r_arr[:, ti, :]
@@ -386,19 +386,60 @@ def screen_catalog(
             real_a, real_b = int(idx_map[a]), int(idx_map[b])
             key = (min(real_a, real_b), max(real_a, real_b))
             dist = float(np.linalg.norm(pos_valid[a] - pos_valid[b]))
+            
+            if key not in coarse_pairs:
+                coarse_pairs[key] = []
+            coarse_pairs[key].append((dt, dist, v_arr[real_a, ti, :], v_arr[real_b, ti, :]))
 
-            if key not in pairs or dist < pairs[key].miss_distance_km:
-                vel_diff = v_arr[real_a, ti, :] - v_arr[real_b, ti, :]
-                rel_vel = float(np.linalg.norm(vel_diff))
-                id_a, id_b = norad_ids[key[0]], norad_ids[key[1]]
-                pairs[key] = ConjunctionEvent(
-                    primary_norad_id=id_a,
-                    secondary_norad_id=id_b,
-                    tca=dt,
-                    miss_distance_km=round(dist, 4),
-                    relative_velocity_km_s=round(rel_vel, 4),
-                )
+    # Refine TCA for coarse approaches
+    logger.debug("Refining TCA for %d potential pairs...", len(coarse_pairs))
+    all_events: list[ConjunctionEvent] = []
+    
+    # We need a lookup for TLE objects since _refine_tca requires them
+    tle_by_id = {t.norad_id: t for t in tles}
+    
+    step_delta = timedelta(minutes=step_minutes)
 
-    events = sorted(pairs.values(), key=lambda ev: ev.miss_distance_km)
-    logger.info("screen_catalog: found %d close pairs", len(events))
-    return events
+    for key, windows in coarse_pairs.items():
+        id_a, id_b = norad_ids[key[0]], norad_ids[key[1]]
+        prim = tle_by_id[id_a]
+        sec = tle_by_id[id_b]
+        
+        for dt, dist, v_a, v_b in windows:
+            t_start = dt - step_delta / 2
+            t_end = dt + step_delta / 2
+            
+            # Sub-second refinement
+            tca, min_dist, rel_vel = _refine_tca(
+                prim, sec, t_start, t_end, initial_step_sec=step_minutes * 30
+            )
+            
+            if min_dist <= threshold_km:
+                duplicate = False
+                for existing in all_events:
+                    if (
+                        existing.primary_norad_id == id_a
+                        and existing.secondary_norad_id == id_b
+                        and abs((existing.tca - tca).total_seconds()) < 300
+                    ):
+                        if min_dist < existing.miss_distance_km:
+                            existing.tca = tca
+                            existing.miss_distance_km = min_dist
+                            existing.relative_velocity_km_s = rel_vel
+                        duplicate = True
+                        break
+                
+                if not duplicate:
+                    all_events.append(
+                        ConjunctionEvent(
+                            primary_norad_id=id_a,
+                            secondary_norad_id=id_b,
+                            tca=tca,
+                            miss_distance_km=round(min_dist, 4),
+                            relative_velocity_km_s=round(rel_vel, 4),
+                        )
+                    )
+
+    all_events.sort(key=lambda ev: ev.miss_distance_km)
+    logger.info("screen_catalog: found %d close pairs", len(all_events))
+    return all_events

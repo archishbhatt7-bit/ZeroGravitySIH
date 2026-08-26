@@ -9,10 +9,10 @@ ZeroGravity is designed for full catalog conjunction screening and collision pro
 ### 1.1 Screening Pipeline
 The conjunction screening pipeline processes over 30,000 objects (active payloads, debris, rocket bodies) efficiently through multiple filtering stages:
 
-1. **Orbital Shell Prefilter:** Compares apogee/perigee bounds to eliminate objects that can never intersect geometrically, discarding ~85% of pairs without the need for propagation.
-2. **Batch SGP4 Propagation:** Propagates the remaining ~800 candidate objects across the required time window (e.g., 7 days) in vectorized batches using a C-level `SatrecArray`.
-3. **KD-Tree Spatial Query:** At each propagation time step, constructs a KD-tree to identify pairs within a specified spatial threshold in $O(n \log n)$ time.
-4. **TCA Refinement:** Performs a bisection search around identified close approaches to pinpoint the exact Time of Closest Approach (TCA) to sub-second precision.
+1. **Orbital Shell Prefilter (Single-Satellite Screening):** For 1-vs-All screening (e.g., screening the ISS against the catalog), compares apogee/perigee bounds to eliminate objects that can never intersect geometrically, discarding ~85% of pairs without the need for propagation. *(Note: For All-vs-All catalog screening, this step is skipped as every satellite has overlapping geometric bounds with others, requiring full vectorization).*
+2. **Batch SGP4 Propagation:** Propagates candidate objects across the required time window (e.g., 7 days) in vectorized batches using a C-level `SatrecArray`.
+3. **KD-Tree Spatial Query:** At each propagation time step, constructs a KD-tree to identify coarse potential approaches within a specified spatial threshold in $O(n \log n)$ time.
+4. **TCA Refinement:** Performs a bisection search around identified coarse approaches to pinpoint the exact Time of Closest Approach (TCA) and miss distance to sub-second precision.
 
 ### 1.2 Collision Probability ($P_c$)
 Once a conjunction is identified, ZeroGravity computes the probability of collision using two methods:

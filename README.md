@@ -153,8 +153,9 @@ You can launch both the frontend and backend simultaneously from the root direct
 
 ### Screening Pipeline
 
+**1-vs-All Screening (Single Satellite):**
 ```
-Full catalog (30,070 objects: active, debris, rocket bodies, unknown)
+Full catalog (30,070 objects)
     │
     ▼
 ┌─────────────────────────┐
@@ -170,10 +171,31 @@ Full catalog (30,070 objects: active, debris, rocket bodies, unknown)
     │
     ▼
 ┌─────────────────────────┐
-│ KD-Tree Spatial Query    │  Per time step, find pairs within threshold
-│ O(n log n) construction  │
+│ TCA Refinement           │  Bisection search
+│ ~1 second precision      │  Sub-second propagation steps
 └─────────────────────────┘
-    │ flagged pairs
+    │
+    ▼
+  Conjunction events
+```
+
+**All-vs-All Screening (Full Catalog):**
+*(Skips the prefilter since all objects have geometric overlaps with others)*
+```
+Full catalog (30,070 objects)
+    │
+    ▼
+┌─────────────────────────┐
+│ Batch SGP4 Propagation   │  SatrecArray (C-level, vectorized)
+│ 168 time steps (7 days)  │  ~40ms for full catalog
+└─────────────────────────┘
+    │
+    ▼
+┌─────────────────────────┐
+│ KD-Tree Spatial Query    │  Per time step, find coarse pairs
+│ O(n log n) construction  │  within threshold
+└─────────────────────────┘
+    │ flagged coarse pairs
     ▼
 ┌─────────────────────────┐
 │ TCA Refinement           │  Bisection search
@@ -181,7 +203,7 @@ Full catalog (30,070 objects: active, debris, rocket bodies, unknown)
 └─────────────────────────┘
     │
     ▼
-  Conjunction events with TCA, miss distance, relative velocity
+  Conjunction events
 ```
 
 ### Collision Probability
