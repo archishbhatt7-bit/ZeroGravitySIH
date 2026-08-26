@@ -60,30 +60,33 @@ export function GlobeView() {
     const mode = state.isAnalysisMode;
     const eventId = state.selectedEventId;
 
-    const analysisNoradIds = new Set<number>();
-    if (mode) {
-      if (eventId) {
-        const event = state.conjunctions.find(
-          (c) =>
-            `${c.primary.norad_id}-${c.secondary.norad_id}-${c.tca}` ===
-            eventId,
-        );
-        if (event) {
-          analysisNoradIds.add(event.primary.norad_id);
-          analysisNoradIds.add(event.secondary.norad_id);
+    const objectsToProcess = new Map<number, any>();
+
+    if (!mode) {
+      for (const sat of satellites) {
+        objectsToProcess.set(sat.norad_id, sat);
+      }
+    } else {
+      const eventsToRender = eventId
+        ? state.conjunctions.filter(
+            (c) =>
+              `${c.primary.norad_id}-${c.secondary.norad_id}-${c.tca}` ===
+              eventId
+          )
+        : state.conjunctions;
+
+      for (const c of eventsToRender) {
+        if (!objectsToProcess.has(c.primary.norad_id)) {
+          objectsToProcess.set(c.primary.norad_id, c.primary);
         }
-      } else {
-        state.conjunctions.forEach((c) => {
-          analysisNoradIds.add(c.primary.norad_id);
-          analysisNoradIds.add(c.secondary.norad_id);
-        });
+        if (!objectsToProcess.has(c.secondary.norad_id)) {
+          objectsToProcess.set(c.secondary.norad_id, c.secondary);
+        }
       }
     }
 
     let skippedCount = 0;
-    for (const sat of satellites) {
-      if (mode && !analysisNoradIds.has(sat.norad_id)) continue;
-
+    for (const sat of objectsToProcess.values()) {
       if (!mode) {
         if (
           sat.object_type === "ACTIVE_SATELLITE" &&
@@ -96,8 +99,20 @@ export function GlobeView() {
         if (sat.object_type === "UNKNOWN" && !visibility.unknown) continue;
       }
 
-      const satrec = satrecsRef.current.get(sat.norad_id);
-      if (!satrec) continue;
+      let satrec = satrecsRef.current.get(sat.norad_id);
+      if (!satrec && sat.line1 && sat.line2) {
+        try {
+          satrec = satellite.twoline2satrec(sat.line1, sat.line2);
+          satrecsRef.current.set(sat.norad_id, satrec);
+        } catch {
+          // ignore parsing error
+        }
+      }
+      
+      if (!satrec) {
+        skippedCount++;
+        continue;
+      }
 
       try {
         const posVel = satellite.propagate(satrec, now);

@@ -553,7 +553,7 @@ async def get_conjunctions(
     filter_formations: bool = Query(True, description="Filter known formations"),
     stale_tle_days: float = Query(None, description="Max TLE age in days"),
     data_source: str = Query("celestrak_active", description="Data source"),
-    max_objects: int = Query(1500, description="Max objects to screen"),
+    max_objects: int = Query(-1, description="Max objects to screen (-1 for all)"),
 ):
     tles = await fetch_tles_from_celestrak(data_source, max_objects)
 
