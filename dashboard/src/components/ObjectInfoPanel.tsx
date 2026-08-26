@@ -71,12 +71,25 @@ export function ObjectInfoPanel() {
   );
 
   return (
-    <div className="absolute top-24 left-6 glass-panel w-80 p-5 shadow-2xl z-30">
+    <div style={{
+      position: "absolute",
+      top: "16px",
+      right: "16px",
+      width: "320px",
+      padding: "20px",
+      zIndex: 30,
+      background: "rgba(10, 12, 18, 0.92)",
+      backdropFilter: "blur(16px)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRadius: "8px",
+      boxShadow: "0 16px 40px rgba(0, 0, 0, 0.6)",
+      color: "#e0e0e0",
+    }}>
       <button
         onClick={() => setSelectedSatellite(null)}
-        className="absolute top-4 right-4 text-slate-400 hover:text-white"
+        style={{ position: "absolute", top: "12px", right: "12px", color: "#888", cursor: "pointer", background: "none", border: "none" }}
       >
-        <X className="w-5 h-5" />
+        <X style={{ width: "18px", height: "18px" }} />
       </button>
 
       <div className="flex items-center gap-3 mb-4">

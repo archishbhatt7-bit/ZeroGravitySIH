@@ -1,9 +1,10 @@
 import { Search, RefreshCw, Star, Sun } from "lucide-react";
 import { useStore } from "../store";
 import { useState, useEffect, useRef } from "react";
+import * as satellite from "satellite.js";
 
 export function TopBar() {
-  const { fetchData, loading, searchSatellites, setSelectedSatellite, setFocusTarget, satellites } = useStore();
+  const { fetchData, loading, setSelectedSatellite, setFocusTarget, satellites } = useStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<typeof satellites>([]);
   const [showResults, setShowResults] = useState(false);
@@ -30,6 +31,30 @@ export function TopBar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const handleSelect = (s: typeof satellites[0]) => {
+    setSelectedSatellite(s.norad_id);
+    setQuery(s.name);
+    setShowResults(false);
+
+    // Compute satellite's current position and fly the globe camera to it
+    try {
+      const satrec = satellite.twoline2satrec(s.line1, s.line2);
+      const now = new Date();
+      const posVel = satellite.propagate(satrec, now);
+      const gmst = satellite.gstime(now);
+      if (posVel.position && typeof posVel.position !== "boolean") {
+        const geodetic = satellite.eciToGeodetic(posVel.position, gmst);
+        setFocusTarget({
+          lat: satellite.degreesLat(geodetic.latitude),
+          lng: satellite.degreesLong(geodetic.longitude),
+          alt: geodetic.height, // km
+        });
+      }
+    } catch (e) {
+      console.warn("[ZG] Could not compute position for", s.name, e);
+    }
+  };
 
   return (
     <div className="navbar area-navbar">
@@ -64,11 +89,7 @@ export function TopBar() {
             {results.map((s) => (
               <div
                 key={s.norad_id}
-                onClick={() => {
-                  setSelectedSatellite(s.norad_id);
-                  setQuery(s.name);
-                  setShowResults(false);
-                }}
+                onClick={() => handleSelect(s)}
                 style={{
                   padding: "6px 10px",
                   fontSize: "11px",
@@ -106,3 +127,4 @@ export function TopBar() {
     </div>
   );
 }
+

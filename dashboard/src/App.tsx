@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useStore } from "./store";
 import { GlobeView } from "./components/GlobeView";
 import { TopBar } from "./components/TopBar";
@@ -7,6 +7,7 @@ import { StatsCards } from "./components/StatsCards";
 import { IntelPanel } from "./components/IntelPanel";
 import { GlobeLegend } from "./components/GlobeLegend";
 import { LoadingOverlay } from "./components/LoadingOverlay";
+import { ObjectInfoPanel } from "./components/ObjectInfoPanel";
 
 function App() {
   const {
@@ -22,8 +23,25 @@ function App() {
     setFocusTarget,
   } = useStore();
 
+  // Debounce fetchData so sliders don't trigger a fetch on every tick
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    fetchData();
+    if (isInitialMount.current) {
+      // First mount: fetch immediately
+      isInitialMount.current = false;
+      fetchData();
+      return;
+    }
+    // Subsequent changes (e.g. slider drag): debounce 800ms
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      fetchData();
+    }, 800);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
   }, [
     timeWindowHours,
     distanceThresholdKm,
@@ -70,6 +88,7 @@ function App() {
       <div className="area-globe">
         <GlobeView />
         <GlobeLegend />
+        <ObjectInfoPanel />
       </div>
 
       {/* Row 4 Right: Intelligence Panel */}

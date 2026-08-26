@@ -80,6 +80,7 @@ export function GlobeView() {
       }
     }
 
+    let skippedCount = 0;
     for (const sat of satellites) {
       if (mode && !analysisNoradIds.has(sat.norad_id)) continue;
 
@@ -106,23 +107,23 @@ export function GlobeView() {
           const lng = satellite.degreesLong(geodetic.longitude);
           const alt = geodetic.height * 1000; // satellite.js height is km, Cesium wants meters
 
-          let color = Cesium.Color.fromCssColorString("rgba(255, 255, 255, 0.4)");
-          let pixelSize = 2;
+          let color = Cesium.Color.fromCssColorString("rgba(255, 255, 255, 0.5)");
+          let pixelSize = 3;
 
           if (sat.object_type === "ACTIVE_SATELLITE") {
             color = Cesium.Color.fromCssColorString("#00f0ff");
-            pixelSize = 4;
+            pixelSize = 5;
           } else if (sat.object_type === "DEBRIS") {
             color = Cesium.Color.fromCssColorString("#999999");
-            pixelSize = 2;
+            pixelSize = 3;
           } else if (sat.object_type === "ROCKET_BODY") {
             color = Cesium.Color.fromCssColorString("#eab308");
-            pixelSize = 3;
+            pixelSize = 4;
           }
 
           if (sat.norad_id === useStore.getState().selectedSatelliteId) {
             color = Cesium.Color.WHITE;
-            pixelSize = 8;
+            pixelSize = 10;
           }
 
           points.push({
@@ -136,11 +137,15 @@ export function GlobeView() {
               object_type: sat.object_type,
             },
           });
+        } else {
+          skippedCount++;
         }
       } catch {
-        // Skip propagation errors
+        skippedCount++;
       }
     }
+
+    console.log(`[ZG] Satellite positions computed: ${points.length} rendered, ${skippedCount} skipped, ${satellites.length} total in catalog`);
     setSatPositions(points);
   }, [satellites]);
 
