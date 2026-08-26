@@ -19,6 +19,10 @@ interface DashboardState {
   selectedSatelliteId: number | null;
   selectedEventId: string | null;
 
+  // Conjunctions specific to the selected satellite
+  selectedSatConjunctions: ConjunctionEvent[];
+  selectedSatConjLoading: boolean;
+
   // Focus target for globe camera animation
   focusTarget: FocusTarget | null;
 
@@ -62,6 +66,7 @@ interface DashboardState {
   setOrbitPath: (
     path: { lat: number; lng: number; alt: number }[] | null,
   ) => void;
+  fetchSelectedSatConjunctions: (noradId: number) => Promise<void>;
 }
 
 const API_BASE = "http://localhost:8000/api";
@@ -76,6 +81,8 @@ export const useStore = create<DashboardState>((set, get) => ({
 
   selectedSatelliteId: null,
   selectedEventId: null,
+  selectedSatConjunctions: [],
+  selectedSatConjLoading: false,
   focusTarget: null,
 
   searchQuery: "",
@@ -90,7 +97,7 @@ export const useStore = create<DashboardState>((set, get) => ({
   distanceThresholdKm: 10,
   filterFormations: true,
   autoRefreshInterval: 0,
-  dataSource: "celestrak_active",
+  dataSource: "celestrak_full",
   staleTleDays: 7,
 
   layerVisibility: {
@@ -106,15 +113,18 @@ export const useStore = create<DashboardState>((set, get) => ({
 
   fetchData: async () => {
     set({ loading: true, error: null });
+    const state = get();
+
+    // Step 1: Fetch satellites first — show them immediately on the globe
     try {
       const state = get();
 
       const [satRes, conjRes] = await Promise.all([
         fetch(
-          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=3000`,
+          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=1500`,
         ),
         fetch(
-          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=-1&stale_tle_days=${state.staleTleDays}`,
+          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
         ),
       ]);
 
@@ -133,12 +143,33 @@ export const useStore = create<DashboardState>((set, get) => ({
         error: null,
       });
     } catch (err: any) {
-      set({ error: err.message || "An error occurred", loading: false });
+      set({ error: err.message || "Failed to fetch satellites", loading: false });
+    }
+
+    // Step 2: Fetch conjunctions in the background (heavy computation)
+    try {
+      const conjRes = await fetch(
+        `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
+      );
+      if (conjRes.ok) {
+        const conjData = await conjRes.json();
+        set({
+          conjunctions: conjData.conjunctions,
+          lastRefresh: new Date(),
+        });
+      }
+    } catch {
+      // Conjunctions failing is non-fatal — globe still works
     }
   },
 
-  setSelectedSatellite: (id) =>
-    set({ selectedSatelliteId: id, selectedEventId: null }),
+  setSelectedSatellite: (id) => {
+    set({ selectedSatelliteId: id, selectedEventId: null, selectedSatConjunctions: [], selectedSatConjLoading: false });
+    // Auto-fetch conjunctions for the selected satellite
+    if (id !== null) {
+      get().fetchSelectedSatConjunctions(id);
+    }
+  },
   setSelectedEvent: (id) =>
     set({ selectedEventId: id, selectedSatelliteId: null }),
   setFocusTarget: (target) => set({ focusTarget: target }),
@@ -148,9 +179,27 @@ export const useStore = create<DashboardState>((set, get) => ({
       // Clear selections when exiting analysis mode
       ...(!mode ? { selectedEventId: null, orbitPath: null } : {}),
     }),
-  setTimeWindow: (hours) => set({ timeWindowHours: hours }),
-  setDistanceThreshold: (km) => set({ distanceThresholdKm: km }),
-  setFilterFormations: (filter) => set({ filterFormations: filter }),
+  setTimeWindow: (hours) => {
+    set({ timeWindowHours: hours });
+    const state = get();
+    if (state.selectedSatelliteId) {
+      state.fetchSelectedSatConjunctions(state.selectedSatelliteId);
+    }
+  },
+  setDistanceThreshold: (km) => {
+    set({ distanceThresholdKm: km });
+    const state = get();
+    if (state.selectedSatelliteId) {
+      state.fetchSelectedSatConjunctions(state.selectedSatelliteId);
+    }
+  },
+  setFilterFormations: (filter) => {
+    set({ filterFormations: filter });
+    const state = get();
+    if (state.selectedSatelliteId) {
+      state.fetchSelectedSatConjunctions(state.selectedSatelliteId);
+    }
+  },
   setAutoRefreshInterval: (ms) => set({ autoRefreshInterval: ms }),
   setDataSource: (source) => set({ dataSource: source }),
   setStaleTleDays: (days) => set({ staleTleDays: days }),
@@ -179,6 +228,27 @@ export const useStore = create<DashboardState>((set, get) => ({
       set({ searchResults: data.results, searchLoading: false });
     } catch {
       set({ searchResults: [], searchLoading: false });
+    }
+  },
+
+  fetchSelectedSatConjunctions: async (noradId: number) => {
+    set({ selectedSatConjLoading: true });
+    try {
+      const state = get();
+      const res = await fetch(
+        `${API_BASE}/screen/${noradId}?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        // Only set if this satellite is still selected
+        if (get().selectedSatelliteId === noradId) {
+          set({ selectedSatConjunctions: data.conjunctions, selectedSatConjLoading: false });
+        }
+      } else {
+        set({ selectedSatConjLoading: false });
+      }
+    } catch {
+      set({ selectedSatConjLoading: false });
     }
   },
 }));

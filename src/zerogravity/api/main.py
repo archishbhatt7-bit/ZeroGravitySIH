@@ -58,21 +58,14 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
 
     headers = {"User-Agent": "ZeroGravity/0.2.0 (contact: info@zerogravity.local)"}
 
-    try:
-        async with httpx.AsyncClient(headers=headers) as client:
-            response = await client.get(url, timeout=10.0)
-            response.raise_for_status()
-            tles = parse_tle(response.text)
-    except Exception as e:
-        print(f"Failed to fetch from Celestrak: {e}. Using local fallback.")
-        import os
-
-        fallback_path = os.path.join(os.path.dirname(__file__), "fallback_tles.txt")
-        if os.path.exists(fallback_path):
-            with open(fallback_path, "r", encoding="utf-8") as f:
-                tles = parse_tle(f.read())
-        else:
-            raise e
+    # Force use of local fallback to avoid Celestrak hanging
+    import os
+    fallback_path = os.path.join(os.path.dirname(__file__), "fallback_tles.txt")
+    if os.path.exists(fallback_path):
+        with open(fallback_path, "r", encoding="utf-8") as f:
+            tles = parse_tle(f.read())
+    else:
+        raise Exception("Fallback TLE file not found")
 
     # Filter to Low Earth Orbit (LEO) only
     # LEO altitude <= 2000km corresponds to a mean motion >= 11.25 revs/day
@@ -86,6 +79,9 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
             pass
 
     tles = leo_tles
+    import random
+    random.seed(42)  # Consistent sample
+    random.shuffle(tles)
 
     cache[cache_key] = tles
     cache[fetch_key] = now
@@ -512,7 +508,7 @@ async def get_orbit_path(norad_id: int = Path(..., description="NORAD ID of the 
     raise HTTPException(status_code=404, detail="Satellite not found in catalog")
 
 
-@app.post("/api/screen/{norad_id}")
+@app.get("/api/screen/{norad_id}")
 async def screen_satellite(
     norad_id: int = Path(..., description="NORAD ID to screen"),
     hours: float = Query(24.0, description="Screening window in hours"),

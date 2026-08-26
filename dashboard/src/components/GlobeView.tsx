@@ -29,6 +29,7 @@ export function GlobeView() {
     conjunctions,
     selectedSatelliteId,
     selectedEventId,
+    selectedSatConjunctions,
     setSelectedSatellite,
     focusTarget,
     setFocusTarget,
@@ -59,6 +60,7 @@ export function GlobeView() {
     const visibility = state.layerVisibility;
     const mode = state.isAnalysisMode;
     const eventId = state.selectedEventId;
+    const selectedSatId = state.selectedSatelliteId;
 
     const objectsToProcess = new Map<number, any>();
 
@@ -191,9 +193,10 @@ export function GlobeView() {
     satellites.length,
   ]);
 
-  // Conjunction Highlights
+  // Conjunction Highlights (only show when NO satellite is selected)
   const ringsData = useMemo(() => {
     if (!layerVisibility.conjunctionHighlights) return [];
+    if (selectedSatelliteId) return []; // Hide global conjunctions in focus mode
 
     return conjunctions.slice(0, 80).map((c, idx) => {
        const colorStr = c.risk_category === "CRITICAL"
@@ -212,7 +215,23 @@ export function GlobeView() {
          pixelSize
        };
     });
-  }, [conjunctions, layerVisibility.conjunctionHighlights]);
+  }, [conjunctions, layerVisibility.conjunctionHighlights, selectedSatelliteId]);
+
+  // Collision markers for the selected satellite's orbit
+  const collisionMarkers = useMemo(() => {
+    if (!selectedSatelliteId || selectedSatConjunctions.length === 0) return [];
+
+    return selectedSatConjunctions.map((c, idx) => {
+      return {
+        id: `collision-${idx}`,
+        position: Cesium.Cartesian3.fromDegrees(c.lng, c.lat, c.alt * 1000),
+        color: Cesium.Color.fromCssColorString("#ff9500"),
+        pixelSize: 16,
+        label: `${c.secondary.name || c.primary.name} — ${c.miss_distance_km.toFixed(2)} km`,
+        riskCategory: c.risk_category,
+      };
+    });
+  }, [selectedSatelliteId, selectedSatConjunctions]);
 
   // Orbit Paths
   const pathsData = useMemo(() => {
@@ -227,23 +246,36 @@ export function GlobeView() {
       durationMins: number,
       color: Cesium.Color,
     ) => {
-      const positions = [];
+      const segments = [];
+      let currentPositions = [];
+      let lastLng = null;
+
       for (let i = 0; i <= durationMins; i += 2) {
         const t = new Date(startTime.getTime() + i * 60000);
         const gmst = satellite.gstime(t);
         const posVel = satellite.propagate(satrec, t);
         if (posVel.position && typeof posVel.position !== "boolean") {
           const geodetic = satellite.eciToGeodetic(posVel.position, gmst);
-          positions.push(
-            Cesium.Cartesian3.fromDegrees(
-              satellite.degreesLong(geodetic.longitude),
-              satellite.degreesLat(geodetic.latitude),
-              geodetic.height * 1000
-            )
-          );
+          const lng = satellite.degreesLong(geodetic.longitude);
+          const lat = satellite.degreesLat(geodetic.latitude);
+          const alt = geodetic.height * 1000;
+
+          if (lastLng !== null && Math.abs(lng - lastLng) > 180) {
+            if (currentPositions.length > 0) {
+              segments.push({ positions: currentPositions, color });
+            }
+            currentPositions = [];
+          }
+
+          currentPositions.push(Cesium.Cartesian3.fromDegrees(lng, lat, alt));
+          lastLng = lng;
         }
       }
-      return { positions, color };
+      
+      if (currentPositions.length > 0) {
+        segments.push({ positions: currentPositions, color });
+      }
+      return segments;
     };
 
     if (selectedEventId) {
@@ -260,14 +292,15 @@ export function GlobeView() {
         const start = new Date(tca.getTime() - 45 * 60000);
 
         if (sat1)
-          paths.push(getPath(sat1, start, 90, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.5)")));
+          paths.push(...getPath(sat1, start, 90, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.5)")));
         if (sat2)
-          paths.push(getPath(sat2, start, 90, Cesium.Color.fromCssColorString("rgba(255, 150, 0, 0.5)")));
+          paths.push(...getPath(sat2, start, 90, Cesium.Color.fromCssColorString("rgba(255, 150, 0, 0.5)")));
       }
     } else if (selectedSatelliteId) {
       const sat = satrecsRef.current.get(selectedSatelliteId);
       if (sat) {
-        paths.push(getPath(sat, now, 90, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.5)")));
+        // Full orbit path (180 mins = ~2 orbits for LEO)
+        paths.push(...getPath(sat, now, 180, Cesium.Color.fromCssColorString("rgba(0, 240, 255, 0.6)")));
       }
     }
 
@@ -445,10 +478,22 @@ export function GlobeView() {
           </Entity>
         ))}
 
-        {/* Conjunction Highlights */}
+        {/* Conjunction Highlights (global — hidden in focus mode) */}
         {ringsData.map((r) => (
           <Entity key={r.id} position={r.position}>
              <PointGraphics color={r.color} pixelSize={r.pixelSize} outlineColor={Cesium.Color.WHITE} outlineWidth={2} />
+          </Entity>
+        ))}
+
+        {/* Collision Markers on selected satellite's orbit */}
+        {collisionMarkers.map((m) => (
+          <Entity key={m.id} position={m.position} description={m.label}>
+            <PointGraphics
+              color={m.color}
+              pixelSize={m.pixelSize}
+              outlineColor={Cesium.Color.WHITE}
+              outlineWidth={3}
+            />
           </Entity>
         ))}
 
