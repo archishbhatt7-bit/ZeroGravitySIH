@@ -124,7 +124,7 @@ export const useStore = create<DashboardState>((set, get) => ({
           `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=15000`,
         ),
         fetch(
-          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=15000&stale_tle_days=${state.staleTleDays}`,
+          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
         ),
       ]);
 
