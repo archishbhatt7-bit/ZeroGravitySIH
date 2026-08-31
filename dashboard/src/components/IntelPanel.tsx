@@ -5,7 +5,7 @@ import { format } from "date-fns";
 const HISTORICAL_EVENTS = [
   { name: "Fengyun-1C ASAT Test", date: "Jan 11, 2007", count: "3,500+", color: "#ef4444" },
   { name: "Iridium 33 / Cosmos 2251", date: "Feb 10, 2009", count: "2,300+", color: "#f97316" },
-  { name: "Cosmos 1408 ASAT Test", date: "Nov 15, 2021", count: "1,500+", color: "#ef4444" },
+  { name: "Cosmos 1408 ASAT Test", date: "Nov 15, 2021", count: "15,000+", color: "#ef4444" },
   { name: "Starlink Megaconstellation", date: "2019–present", count: "42,000", color: "#eab308" },
   { name: "Kessler Syndrome", date: "1978 — Kessler & Cour-Palais", count: "APPROACHING", color: "#ef4444" },
 ];

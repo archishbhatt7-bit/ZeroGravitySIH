@@ -46,7 +46,7 @@ cache = {
 }
 
 
-async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_objects: int = 1500):
+async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_objects: int = 15000):
     now = datetime.now(timezone.utc)
     cache_key = "tles_active" if data_source == "celestrak_active" else "tles_full"
     fetch_key = "last_fetch_active" if data_source == "celestrak_active" else "last_fetch_full"
@@ -58,14 +58,20 @@ async def fetch_tles_from_celestrak(data_source: str = "celestrak_active", max_o
 
     headers = {"User-Agent": "ZeroGravity/0.2.0 (contact: info@zerogravity.local)"}
 
-    # Force use of local fallback to avoid Celestrak hanging
-    import os
-    fallback_path = os.path.join(os.path.dirname(__file__), "fallback_tles.txt")
-    if os.path.exists(fallback_path):
-        with open(fallback_path, "r", encoding="utf-8") as f:
-            tles = parse_tle(f.read())
-    else:
-        raise Exception("Fallback TLE file not found")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            tles = parse_tle(resp.text)
+    except Exception as e:
+        logger.warning(f"Failed to fetch from Celestrak: {e}. Using fallback.")
+        import os
+        fallback_path = os.path.join(os.path.dirname(__file__), "fallback_tles.txt")
+        if os.path.exists(fallback_path):
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                tles = parse_tle(f.read())
+        else:
+            raise Exception("Fallback TLE file not found")
 
     # Filter to Low Earth Orbit (LEO) only
     # LEO altitude <= 2000km corresponds to a mean motion >= 11.25 revs/day
@@ -393,7 +399,7 @@ async def get_stats():
     """Get aggregate statistics for the dashboard TopBar."""
     now = datetime.now(timezone.utc)
     if not cache["tles_active"]:
-        await fetch_tles_from_celestrak("celestrak_active", max_objects=1500)
+        await fetch_tles_from_celestrak("celestrak_active", max_objects=15000)
 
     tles = cache["tles_active"]
     active = 0
@@ -437,7 +443,7 @@ async def get_stats():
 
 @app.get("/api/satellites")
 async def get_satellites(
-    max_objects: int = Query(1500, description="Max objects to return"),
+    max_objects: int = Query(15000, description="Max objects to return"),
     data_source: str = Query("celestrak_active", description="Data source"),
 ):
     tles = await fetch_tles_from_celestrak(data_source, max_objects)
@@ -452,7 +458,7 @@ async def search_satellites(
     """Search for satellites by name (substring) or NORAD ID (exact)."""
     tles = cache["tles_active"]
     if not tles:
-        tles = await fetch_tles_from_celestrak("celestrak_active", max_objects=1500)
+        tles = await fetch_tles_from_celestrak("celestrak_active", max_objects=15000)
 
     q_upper = q.strip().upper()
     results = []
