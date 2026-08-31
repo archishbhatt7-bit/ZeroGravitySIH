@@ -59,7 +59,7 @@ interface DashboardState {
   setAutoRefreshInterval: (ms: number) => void;
   setDataSource: (source: string) => void;
   setStaleTleDays: (days: number) => void;
-  setLayerVisibility: (layer: keyof LayerVisibility, visible: boolean) => void;
+  setLayerVisibility: (layer: keyof LayerVisibility, visible: boolean | string) => void;
   searchSatellites: (query: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   clearSearch: () => void;
@@ -69,7 +69,7 @@ interface DashboardState {
   fetchSelectedSatConjunctions: (noradId: number) => Promise<void>;
 }
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 export const useStore = create<DashboardState>((set, get) => ({
   satellites: [],

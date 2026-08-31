@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useStore } from "./store";
 import { GlobeView } from "./components/GlobeView";
 import { TopBar } from "./components/TopBar";

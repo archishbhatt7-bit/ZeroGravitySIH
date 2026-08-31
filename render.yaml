@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: zerogravity-api
+    env: python
+    buildCommand: "pip install -e .[api]"
+    startCommand: "uvicorn zerogravity.api.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+
+  - type: web
+    name: zerogravity-dashboard
+    env: static
+    buildCommand: "cd dashboard && npm install && npm run build"
+    staticPublishPath: "./dashboard/dist"
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: zerogravity-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NODE_VERSION
+        value: 20.0.0

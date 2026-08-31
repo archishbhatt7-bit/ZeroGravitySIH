@@ -60,7 +60,7 @@ export function GlobeView() {
     const visibility = state.layerVisibility;
     const mode = state.isAnalysisMode;
     const eventId = state.selectedEventId;
-    const selectedSatId = state.selectedSatelliteId;
+  
 
     const objectsToProcess = new Map<number, any>();
 

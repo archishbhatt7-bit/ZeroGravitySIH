@@ -6,7 +6,7 @@ interface RiskBreakdownChartProps {
 
 export function RiskBreakdownChart({ factors }: RiskBreakdownChartProps) {
   // Normalize factors for display
-  const maxBarWidth = 100;
+
 
   const renderBar = (
     label: string,
