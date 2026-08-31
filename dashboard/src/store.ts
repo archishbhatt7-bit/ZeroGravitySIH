@@ -98,7 +98,7 @@ export const useStore = create<DashboardState>((set, get) => ({
   filterFormations: false,
   autoRefreshInterval: 300000,
   dataSource: "active",
-  staleTleDays: 3,
+  staleTleDays: 9999,
 
   layerVisibility: {
     activeSatellites: true,
@@ -119,27 +119,18 @@ export const useStore = create<DashboardState>((set, get) => ({
     try {
       const state = get();
 
-      const [satRes, conjRes] = await Promise.all([
-        fetch(
-          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=2000`,
-        ),
-        fetch(
-          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=2000&stale_tle_days=${state.staleTleDays}`,
-        ),
-      ]);
+      const satRes = await fetch(
+        `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=2000`,
+      );
 
-      if (!satRes.ok || !conjRes.ok)
+      if (!satRes.ok)
         throw new Error("Failed to fetch data from ZeroGravity API");
 
       const satData = await satRes.json();
-      const conjData = await conjRes.json();
 
       set({
         satellites: satData.satellites,
-        conjunctions: conjData.conjunctions,
-        totalScreenedCount: conjData.total_screened,
         loading: false,
-        lastRefresh: new Date(),
         error: null,
       });
     } catch (err: any) {
