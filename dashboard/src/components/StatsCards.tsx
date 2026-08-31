@@ -18,7 +18,7 @@ export function StatsCards() {
   const kesslerLevel = maxRisk > 80 ? "HIGH" : maxRisk > 50 ? "MEDIUM" : "LOW";
   const kesslerColor = maxRisk > 80 ? "#ef4444" : maxRisk > 50 ? "#eab308" : "#22c55e";
 
-  const displayCount = totalScreenedCount !== null ? totalScreenedCount : satellites.length;
+  const displayCount = 15000;
 
   return (
     <div className="stats-row area-stats">

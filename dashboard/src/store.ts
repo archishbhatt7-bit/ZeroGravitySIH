@@ -94,11 +94,11 @@ export const useStore = create<DashboardState>((set, get) => ({
   isAnalysisMode: false,
 
   timeWindowHours: 24,
-  distanceThresholdKm: 10,
-  filterFormations: true,
-  autoRefreshInterval: 0,
-  dataSource: "celestrak_full",
-  staleTleDays: 7,
+  distanceThresholdKm: 50,
+  filterFormations: false,
+  autoRefreshInterval: 300000,
+  dataSource: "active",
+  staleTleDays: 3,
 
   layerVisibility: {
     activeSatellites: true,
@@ -121,10 +121,10 @@ export const useStore = create<DashboardState>((set, get) => ({
 
       const [satRes, conjRes] = await Promise.all([
         fetch(
-          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=15000`,
+          `${API_BASE}/satellites?data_source=${state.dataSource}&max_objects=2500`,
         ),
         fetch(
-          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
+          `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=2500&stale_tle_days=${state.staleTleDays}`,
         ),
       ]);
 
@@ -149,7 +149,7 @@ export const useStore = create<DashboardState>((set, get) => ({
     // Step 2: Fetch conjunctions in the background (heavy computation)
     try {
       const conjRes = await fetch(
-        `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=1500&stale_tle_days=${state.staleTleDays}`,
+        `${API_BASE}/conjunctions?hours=${state.timeWindowHours}&threshold_km=${state.distanceThresholdKm}&filter_formations=${state.filterFormations}&data_source=${state.dataSource}&max_objects=2500&stale_tle_days=${state.staleTleDays}`,
       );
       if (conjRes.ok) {
         const conjData = await conjRes.json();
