@@ -1,7 +1,7 @@
 import { useStore } from "../store";
 
 export function StatsCards() {
-  const { totalScreenedCount, satellites, conjunctions, lastRefresh } = useStore();
+  const { conjunctions, lastRefresh } = useStore();
 
   const critCount = conjunctions.filter(c => c.risk_category === "CRITICAL").length;
   const highCount = conjunctions.filter(c => c.risk_category === "HIGH").length;
